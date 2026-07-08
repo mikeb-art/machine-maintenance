@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WS Display · Machine Maintenance</title>
+<style>
+  :root {
+    --bg: #f4f6f8;
+    --card: #ffffff;
+    --ink: #1a2332;
+    --muted: #64748b;
+    --accent: #1d4ed8;
+    --accent-soft: #eff6ff;
+    --green: #16a34a;
+    --amber: #d97706;
+    --red: #dc2626;
+    --border: #e2e8f0;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--ink); }
+
+  header {
+    background: var(--ink); color: #fff;
+    padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  }
+  header h1 { font-size: 17px; font-weight: 600; letter-spacing: .2px; }
+  header h1 span { color: #93c5fd; }
+  .userbox { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .userbox img { width: 28px; height: 28px; border-radius: 50%; }
+  .userbox button { background: transparent; border: 1px solid #475569; color: #cbd5e1; border-radius: 6px; padding: 5px 10px; cursor: pointer; font-size: 12px; }
+
+  main { max-width: 1200px; margin: 0 auto; padding: 24px; }
+
+  /* Sign-in gate */
+  #gate { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 70vh; gap: 18px; text-align: center; }
+  #gate .logo { font-size: 42px; }
+  #gate h2 { font-size: 22px; }
+  #gate p { color: var(--muted); max-width: 420px; font-size: 14px; line-height: 1.5; }
+  .btn-google {
+    display: inline-flex; align-items: center; gap: 10px; background: #fff; border: 1px solid var(--border);
+    border-radius: 8px; padding: 11px 22px; font-size: 15px; font-weight: 500; cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+  }
+  .btn-google:hover { background: #f8fafc; }
+  #gateError { color: var(--red); font-size: 13px; }
+
+  /* Toolbar */
+  .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 20px; }
+  .tabs { display: flex; gap: 6px; }
+  .tab {
+    border: 1px solid var(--border); background: var(--card); color: var(--muted);
+    padding: 7px 16px; border-radius: 999px; cursor: pointer; font-size: 13px; font-weight: 500;
+  }
+  .tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .toolbar input[type=search] {
+    margin-left: auto; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; min-width: 220px;
+  }
+
+  /* Grid */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 16px; display: flex; flex-direction: column; gap: 8px;
+  }
+  .card .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+  .card h3 { font-size: 15px; }
+  .loc-badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
+  .meta { font-size: 12px; color: var(--muted); line-height: 1.55; }
+  .meta b { color: var(--ink); font-weight: 500; }
+  .last { font-size: 12px; margin-top: 2px; }
+  .last .ok { color: var(--green); font-weight: 600; }
+  .last .warn { color: var(--amber); font-weight: 600; }
+  .last .none { color: var(--muted); }
+  .card .actions { display: flex; gap: 8px; margin-top: auto; padding-top: 10px; }
+  .btn { border: none; border-radius: 7px; padding: 8px 14px; font-size: 13px; font-weight: 500; cursor: pointer; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #1e40af; }
+  .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--ink); }
+  .btn-ghost:hover { background: #f1f5f9; }
+
+  /* Modal */
+  .overlay { position: fixed; inset: 0; background: rgba(15,23,42,.5); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 50; }
+  .overlay.open { display: flex; }
+  .modal { background: #fff; border-radius: 12px; width: 100%; max-width: 520px; max-height: 85vh; overflow-y: auto; padding: 22px; }
+  .modal h3 { font-size: 17px; margin-bottom: 4px; }
+  .modal .sub { font-size: 12px; color: var(--muted); margin-bottom: 16px; }
+  .field { margin-bottom: 13px; }
+  .field label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .4px; }
+  .field input, .field select, .field textarea {
+    width: 100%; padding: 9px 11px; border: 1px solid var(--border); border-radius: 7px; font-size: 14px; font-family: inherit;
+  }
+  .field textarea { min-height: 70px; resize: vertical; }
+  .modal .foot { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+
+  /* History table */
+  .htable { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .htable th { text-align: left; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .4px; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  .htable td { padding: 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .empty { color: var(--muted); font-size: 13px; padding: 14px 4px; }
+
+  .toast {
+    position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
+    background: var(--ink); color: #fff; padding: 11px 20px; border-radius: 8px; font-size: 13px;
+    opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 99;
+  }
+  .toast.show { opacity: 1; }
+  #loading { text-align: center; color: var(--muted); padding: 60px 0; font-size: 14px; display: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>WS Display <span>·</span> Machine Maintenance</h1>
+  <div class="userbox" id="userbox" style="display:none">
+    <img id="userpic" alt="">
+    <span id="username"></span>
+    <button onclick="signOut()">Sign out</button>
+  </div>
+</header>
+
+<main>
+  <div id="gate">
+    <div class="logo">🛠️</div>
+    <h2>Machine Maintenance Tracker</h2>
+    <p>Sign in with your <b>wsdisplay.com</b> Google account to view machines and log maintenance.</p>
+    <button class="btn-google" onclick="signIn()">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.5l6.7-6.7C35.6 2.4 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.8 6.1C12.3 13.2 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"/><path fill="#FBBC05" d="M10.4 28.7c-.5-1.5-.8-3-.8-4.7s.3-3.2.8-4.7l-7.8-6.1C.9 16.5 0 20.1 0 24s.9 7.5 2.6 10.8l7.8-6.1z"/><path fill="#34A853" d="M24 48c6.2 0 11.4-2 15.2-5.6l-7.5-5.8c-2.1 1.4-4.8 2.2-7.7 2.2-6.3 0-11.7-3.7-13.6-9l-7.8 6.1C6.5 42.6 14.6 48 24 48z"/></svg>
+      Sign in with Google
+    </button>
+    <div id="gateError"></div>
+  </div>
+
+  <div id="app" style="display:none">
+    <div class="toolbar">
+      <div class="tabs" id="tabs"></div>
+      <input type="search" id="search" placeholder="Search machines…" oninput="render()">
+    </div>
+    <div class="grid" id="grid"></div>
+  </div>
+  <div id="loading">Loading machines…</div>
+</main>
+
+<!-- Log maintenance modal -->
+<div class="overlay" id="logOverlay">
+  <div class="modal">
+    <h3 id="logTitle">Log Maintenance</h3>
+    <div class="sub" id="logSub"></div>
+    <div class="field"><label>Date performed</label><input type="date" id="fDate"></div>
+    <div class="field"><label>Type</label>
+      <select id="fType">
+        <option>Daily</option><option>Weekly</option><option>Monthly</option>
+        <option>Quarterly</option><option>Semi-Annual</option><option>Annual</option>
+        <option>Repair</option><option>Inspection</option><option>Other</option>
+      </select>
+    </div>
+    <div class="field"><label>Task / work performed</label><input type="text" id="fTask" placeholder="e.g. Printhead cleaning, belt inspection"></div>
+    <div class="field"><label>Notes (optional)</label><textarea id="fNotes" placeholder="Parts used, issues found, follow-ups…"></textarea></div>
+    <div class="foot">
+      <button class="btn btn-ghost" onclick="closeModal('logOverlay')">Cancel</button>
+      <button class="btn btn-primary" id="saveBtn" onclick="saveLog()">Save entry</button>
+    </div>
+  </div>
+</div>
+
+<!-- History modal -->
+<div class="overlay" id="histOverlay">
+  <div class="modal" style="max-width:680px">
+    <h3 id="histTitle">History</h3>
+    <div class="sub" id="histSub"></div>
+    <div id="histBody"></div>
+    <div class="foot"><button class="btn btn-ghost" onclick="closeModal('histOverlay')">Close</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script>
+/* ================= CONFIG ================= */
+const CONFIG = {
+  CLIENT_ID: "YOUR_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com", // set after Google Cloud setup
+  SHEET_ID: "1cOfwaLcLIwUw9iNITbcII4d032_1uHPuUY3gVLJLgeM",
+  LOG_TAB: "MaintenanceLog",
+  ALLOWED_DOMAIN: "wsdisplay.com" // set to "" to allow any Google account
+};
+/* ========================================== */
+
+const LOG_HEADER = ["Logged At", "Date Performed", "Machine", "Type", "Task", "Performed By", "Notes"];
+let tokenClient = null, accessToken = null, user = null;
+let machines = [], logRows = [], machinesTab = null, activeLoc = "All";
+
+function $(id){ return document.getElementById(id); }
+function toast(msg){ const t=$("toast"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"), 2600); }
+
+/* ---------- Auth ---------- */
+function signIn(){
+  $("gateError").textContent = "";
+  if (CONFIG.CLIENT_ID.startsWith("YOUR_")) {
+    $("gateError").textContent = "App not configured yet: Google OAuth Client ID is missing.";
+    return;
+  }
+  if (!tokenClient) {
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: CONFIG.CLIENT_ID,
+      scope: "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile",
+      hd: CONFIG.ALLOWED_DOMAIN || undefined,
+      callback: onToken
+    });
+  }
+  tokenClient.requestAccessToken({ prompt: accessToken ? "" : "select_account" });
+}
+
+async function onToken(resp){
+  if (resp.error) { $("gateError").textContent = "Sign-in failed: " + resp.error; return; }
+  accessToken = resp.access_token;
+  const r = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", { headers: { Authorization: "Bearer " + accessToken }});
+  user = await r.json();
+  if (CONFIG.ALLOWED_DOMAIN && !(user.email || "").toLowerCase().endsWith("@" + CONFIG.ALLOWED_DOMAIN)) {
+    accessToken = null;
+    $("gateError").textContent = "Access restricted to @" + CONFIG.ALLOWED_DOMAIN + " accounts. You signed in as " + user.email + ".";
+    return;
+  }
+  $("userpic").src = user.picture || "";
+  $("username").textContent = user.name || user.email;
+  $("userbox").style.display = "flex";
+  $("gate").style.display = "none";
+  $("loading").style.display = "block";
+  try {
+    await loadAll();
+    $("loading").style.display = "none";
+    $("app").style.display = "block";
+    render();
+  } catch (e) {
+    $("loading").style.display = "none";
+    $("gate").style.display = "flex";
+    $("gateError").textContent = "Could not load the spreadsheet: " + e.message;
+  }
+}
+
+function signOut(){
+  if (accessToken) google.accounts.oauth2.revoke(accessToken, ()=>{});
+  accessToken = null; user = null;
+  $("userbox").style.display = "none";
+  $("app").style.display = "none";
+  $("gate").style.display = "flex";
+}
+
+/* ---------- Sheets API ---------- */
+async function gapi(path, opts = {}){
+  const r = await fetch("https://sheets.googleapis.com/v4/spreadsheets/" + CONFIG.SHEET_ID + path, {
+    ...opts,
+    headers: { Authorization: "Bearer " + accessToken, "Content-Type": "application/json", ...(opts.headers||{}) }
+  });
+  if (r.status === 401) { toast("Session expired — sign in again"); signOut(); throw new Error("Session expired"); }
+  if (!r.ok) { const e = await r.json().catch(()=>({})); throw new Error(e.error?.message || r.statusText); }
+  return r.json();
+}
+
+async function loadAll(){
+  const meta = await gapi("?fields=sheets.properties.title");
+  const tabs = meta.sheets.map(s => s.properties.title);
+  machinesTab = tabs[0];
+
+  if (!tabs.includes(CONFIG.LOG_TAB)) {
+    await gapi(":batchUpdate", { method: "POST", body: JSON.stringify({ requests: [{ addSheet: { properties: { title: CONFIG.LOG_TAB }}}] }) });
+    await gapi("/values/" + encodeURIComponent(CONFIG.LOG_TAB + "!A1") + ":append?valueInputOption=USER_ENTERED",
+      { method: "POST", body: JSON.stringify({ values: [LOG_HEADER] }) });
+  }
+
+  const mv = await gapi("/values/" + encodeURIComponent("'" + machinesTab + "'!A1:F200"));
+  machines = (mv.values || [])
+    .filter(row => row[0] && row[0].trim() && row[0].trim().toUpperCase() !== "NAME")
+    .map(row => {
+      const name = row[0].trim();
+      return {
+        name,
+        loc: name.includes(" - ") ? name.split(" - ")[0].trim() : "Other",
+        model: (row[1] || "").trim(),
+        serial: (row[2] || "").trim(),
+        vendor: (row[4] || "").trim()
+      };
+    });
+
+  await loadLog();
+}
+
+async function loadLog(){
+  const lv = await gapi("/values/" + encodeURIComponent(CONFIG.LOG_TAB + "!A2:G10000"));
+  logRows = lv.values || [];
+}
+
+/* ---------- Rendering ---------- */
+function lastEntryFor(name){
+  let best = null;
+  for (const r of logRows) if (r[2] === name && r[1] && (!best || r[1] > best[1])) best = r;
+  return best;
+}
+
+function renderTabs(){
+  const locs = ["All", ...[...new Set(machines.map(m => m.loc))]];
+  $("tabs").innerHTML = locs.map(l =>
+    `<button class="tab ${l===activeLoc?"active":""}" onclick="activeLoc='${l}';render()">${l}</button>`).join("");
+}
+
+function render(){
+  renderTabs();
+  const q = $("search").value.toLowerCase();
+  const list = machines.filter(m =>
+    (activeLoc === "All" || m.loc === activeLoc) &&
+    (m.name + " " + m.serial + " " + m.vendor).toLowerCase().includes(q));
+
+  $("grid").innerHTML = list.map(m => {
+    const last = lastEntryFor(m.name);
+    let lastHtml;
+    if (!last) lastHtml = `<span class="none">No maintenance logged yet</span>`;
+    else {
+      const days = Math.floor((Date.now() - new Date(last[1] + "T00:00:00")) / 86400000);
+      const cls = days > 30 ? "warn" : "ok";
+      lastHtml = `Last: <span class="${cls}">${last[1]}</span> · ${esc(last[3])} — ${esc(last[4])}`;
+    }
+    return `<div class="card">
+      <div class="top"><h3>${esc(m.name)}</h3><span class="loc-badge">${esc(m.loc)}</span></div>
+      <div class="meta">
+        ${m.model ? `<b>Model:</b> ${esc(m.model)}<br>` : ""}
+        <b>Serial:</b> ${esc(m.serial) || "—"}<br>
+        <b>Vendor:</b> ${esc(m.vendor) || "—"}
+      </div>
+      <div class="last">${lastHtml}</div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="openLog('${escAttr(m.name)}')">Log maintenance</button>
+        <button class="btn btn-ghost" onclick="openHist('${escAttr(m.name)}')">History</button>
+      </div>
+    </div>`;
+  }).join("") || `<div class="empty">No machines match.</div>`;
+}
+
+function esc(s){ return (s||"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function escAttr(s){ return esc(s).replace(/'/g, "\\'"); }
+
+/* ---------- Log entry ---------- */
+let currentMachine = null;
+function openLog(name){
+  currentMachine = name;
+  $("logTitle").textContent = "Log Maintenance";
+  $("logSub").textContent = name;
+  $("fDate").value = new Date().toISOString().slice(0,10);
+  $("fTask").value = ""; $("fNotes").value = "";
+  $("logOverlay").classList.add("open");
+}
+function closeModal(id){ $(id).classList.remove("open"); }
+
+async function saveLog(){
+  if (!$("fTask").value.trim()) { toast("Enter the task performed"); return; }
+  $("saveBtn").disabled = true;
+  try {
+    const row = [
+      new Date().toISOString(),
+      $("fDate").value,
+      currentMachine,
+      $("fType").value,
+      $("fTask").value.trim(),
+      user.email,
+      $("fNotes").value.trim()
+    ];
+    await gapi("/values/" + encodeURIComponent(CONFIG.LOG_TAB + "!A1") + ":append?valueInputOption=USER_ENTERED",
+      { method: "POST", body: JSON.stringify({ values: [row] }) });
+    logRows.push(row);
+    closeModal("logOverlay");
+    render();
+    toast("Maintenance logged ✓");
+  } catch (e) { toast("Save failed: " + e.message); }
+  $("saveBtn").disabled = false;
+}
+
+/* ---------- History ---------- */
+function openHist(name){
+  const rows = logRows.filter(r => r[2] === name).sort((a,b) => (b[1]||"").localeCompare(a[1]||""));
+  $("histTitle").textContent = "History — " + name;
+  $("histSub").textContent = rows.length + " entr" + (rows.length===1?"y":"ies");
+  $("histBody").innerHTML = rows.length
+    ? `<table class="htable"><tr><th>Date</th><th>Type</th><th>Task</th><th>By</th><th>Notes</th></tr>` +
+      rows.map(r => `<tr><td>${esc(r[1])}</td><td>${esc(r[3])}</td><td>${esc(r[4])}</td><td>${esc((r[5]||"").split("@")[0])}</td><td>${esc(r[6])}</td></tr>`).join("") + `</table>`
+    : `<div class="empty">No maintenance logged for this machine yet.</div>`;
+  $("histOverlay").classList.add("open");
+}
+</script>
+</body>
+</html>
