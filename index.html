@@ -3,388 +3,619 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WS Display · Machine Maintenance</title>
+<title>WS Display — Machine Maintenance</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
-  :root {
-    --bg: #f4f6f8;
-    --card: #ffffff;
-    --ink: #1a2332;
-    --muted: #64748b;
-    --accent: #1d4ed8;
-    --accent-soft: #eff6ff;
-    --green: #16a34a;
-    --amber: #d97706;
-    --red: #dc2626;
-    --border: #e2e8f0;
-    --radius: 10px;
+  :root{
+    --navy:#14417e; --navy-2:#1c4e8a; --navy-3:#0f3568;
+    --hl:#2f6cb3; --gold:#f3d375; --ltblue:#9fc3ea;
+    --bg:#eef2f7; --card:#ffffff; --ink:#1b2a41; --muted:#6b7f99;
+    --blue:#1f6fd6; --green:#1e9e4a; --amber:#d98a00; --red:#d93838;
+    --radius:12px; --shadow:0 2px 10px rgba(20,50,90,.08);
   }
-  * { box-sizing: border-box; margin: 0; }
-  body { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--ink); }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Segoe UI",-apple-system,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);display:flex;min-height:100vh}
 
-  header {
-    background: var(--ink); color: #fff;
-    padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px;
-  }
-  header h1 { font-size: 17px; font-weight: 600; letter-spacing: .2px; }
-  header h1 span { color: #93c5fd; }
-  .userbox { display: flex; align-items: center; gap: 10px; font-size: 13px; }
-  .userbox img { width: 28px; height: 28px; border-radius: 50%; }
-  .userbox button { background: transparent; border: 1px solid #475569; color: #cbd5e1; border-radius: 6px; padding: 5px 10px; cursor: pointer; font-size: 12px; }
+  /* ---------- Sidebar ---------- */
+  .sidebar{width:255px;background:linear-gradient(180deg,var(--navy-2),var(--navy) 40%,var(--navy-3));color:#fff;display:flex;flex-direction:column;position:fixed;top:0;bottom:0;left:0;overflow-y:auto}
+  .logo-card{background:#fff;margin:16px 16px 6px;border-radius:6px;padding:8px 12px;text-align:center}
+  .logo-card .tag{font-size:8px;letter-spacing:.4px;color:#6b7f99;text-transform:uppercase}
+  .logo-card .logo{font-weight:900;font-size:22px;color:#0d2f60;letter-spacing:-.5px}
+  .logo-card .logo span{color:#2f6cb3}
+  .app-title{text-align:center;font-size:12px;font-weight:700;letter-spacing:2.5px;margin:6px 0 14px;color:#fff}
+  .nav-label{font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--ltblue);padding:12px 20px 4px;text-transform:uppercase}
+  .nav-label.loc{color:var(--gold)}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:9px 20px;font-size:14px;color:#dbe7f5;cursor:pointer;border-left:4px solid transparent}
+  .nav-item:hover{background:rgba(255,255,255,.07)}
+  .nav-item.active{background:var(--hl);border-left-color:var(--gold);color:#fff;font-weight:600}
+  .nav-item .ico{width:18px;text-align:center}
+  .side-foot{margin-top:auto;padding:14px}
+  .user-card{background:rgba(255,255,255,.1);border-radius:8px;padding:10px 12px;font-size:13px}
+  .user-card .role{font-size:11px;color:var(--ltblue)}
+  .signout{margin-top:10px;width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.25);color:#dbe7f5;border-radius:8px;padding:8px;font-size:13px;cursor:pointer}
 
-  main { max-width: 1200px; margin: 0 auto; padding: 24px; }
+  /* ---------- Main ---------- */
+  .main{margin-left:255px;flex:1;display:flex;flex-direction:column;min-width:0}
+  .topbar{background:#fff;padding:14px 26px;box-shadow:0 1px 4px rgba(20,50,90,.06);position:sticky;top:0;z-index:5}
+  .topbar h1{font-size:19px;display:flex;align-items:center;gap:8px}
+  .topbar .sub{font-size:12.5px;color:#5a7bb0;margin-top:2px}
+  .content{padding:22px 26px 60px}
 
-  /* Sign-in gate */
-  #gate { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 70vh; gap: 18px; text-align: center; }
-  #gate .logo { font-size: 42px; }
-  #gate h2 { font-size: 22px; }
-  #gate p { color: var(--muted); max-width: 420px; font-size: 14px; line-height: 1.5; }
-  .btn-google {
-    display: inline-flex; align-items: center; gap: 10px; background: #fff; border: 1px solid var(--border);
-    border-radius: 8px; padding: 11px 22px; font-size: 15px; font-weight: 500; cursor: pointer;
-    box-shadow: 0 1px 3px rgba(0,0,0,.08);
-  }
-  .btn-google:hover { background: #f8fafc; }
-  #gateError { color: var(--red); font-size: 13px; }
+  /* stats */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:22px}
+  .stat{background:var(--card);border-radius:10px;box-shadow:var(--shadow);padding:14px 18px;border-top:4px solid var(--blue)}
+  .stat .lbl{font-size:11px;font-weight:700;letter-spacing:1px;color:var(--muted);text-transform:uppercase}
+  .stat .val{font-size:30px;font-weight:800;margin-top:2px}
+  .stat.assigned{border-top-color:var(--blue)} .stat.assigned .val{color:var(--ink)}
+  .stat.done{border-top-color:var(--green)} .stat.done .val{color:var(--green)}
+  .stat.rate{border-top-color:var(--amber)} .stat.rate .val{color:var(--amber)}
+  .stat.notdone{border-top-color:var(--red)} .stat.notdone .val{color:var(--red)}
 
-  /* Toolbar */
-  .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 20px; }
-  .tabs { display: flex; gap: 6px; }
-  .tab {
-    border: 1px solid var(--border); background: var(--card); color: var(--muted);
-    padding: 7px 16px; border-radius: 999px; cursor: pointer; font-size: 13px; font-weight: 500;
-  }
-  .tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
-  .toolbar input[type=search] {
-    margin-left: auto; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; min-width: 220px;
-  }
+  /* panel */
+  .panel{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:20px;overflow:hidden}
+  .panel-head{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid #e7edf5;flex-wrap:wrap}
+  .panel-head h2{font-size:15.5px;flex:1;min-width:200px}
+  .pill{border:1px solid #d3deeb;background:#fff;color:#3d5a80;border-radius:20px;padding:5px 14px;font-size:12.5px;cursor:pointer}
+  .pill:hover{background:#f0f5fb}
+  .pill.on{background:var(--navy-2);color:#fff;border-color:var(--navy-2)}
+  .pill.log{background:var(--blue);color:#fff;border-color:var(--blue);font-weight:600}
+  .search{border:1px solid #d3deeb;border-radius:20px;padding:5px 14px;font-size:12.5px;width:190px}
 
-  /* Grid */
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
-  .card {
-    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
-    padding: 16px; display: flex; flex-direction: column; gap: 8px;
-  }
-  .card .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
-  .card h3 { font-size: 15px; }
-  .loc-badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
-  .meta { font-size: 12px; color: var(--muted); line-height: 1.55; }
-  .meta b { color: var(--ink); font-weight: 500; }
-  .last { font-size: 12px; margin-top: 2px; }
-  .last .ok { color: var(--green); font-weight: 600; }
-  .last .warn { color: var(--amber); font-weight: 600; }
-  .last .none { color: var(--muted); }
-  .card .actions { display: flex; gap: 8px; margin-top: auto; padding-top: 10px; }
-  .btn { border: none; border-radius: 7px; padding: 8px 14px; font-size: 13px; font-weight: 500; cursor: pointer; }
-  .btn-primary { background: var(--accent); color: #fff; }
-  .btn-primary:hover { background: #1e40af; }
-  .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--ink); }
-  .btn-ghost:hover { background: #f1f5f9; }
+  /* machine card */
+  .machine{border-bottom:1px solid #eef2f7}
+  .machine:last-child{border-bottom:none}
+  .m-head{display:flex;align-items:center;gap:12px;padding:12px 18px;cursor:pointer;background:#f7fafd}
+  .m-head:hover{background:#eff5fb}
+  .m-head .caret{transition:transform .15s;color:var(--muted)}
+  .machine.open .m-head .caret{transform:rotate(90deg)}
+  .m-title{font-weight:700;font-size:14.5px}
+  .m-serial{font-size:11.5px;color:var(--muted)}
+  .m-prog{margin-left:auto;font-size:12px;color:var(--muted);white-space:nowrap}
+  .m-bar{width:90px;height:6px;border-radius:3px;background:#e2e9f2;overflow:hidden;display:inline-block;vertical-align:middle;margin-left:8px}
+  .m-bar i{display:block;height:100%;background:var(--green)}
+  .m-body{display:none}
+  .machine.open .m-body{display:block}
+  .nodocs{padding:14px 18px;font-size:13px;color:var(--muted);font-style:italic}
 
-  /* Modal */
-  .overlay { position: fixed; inset: 0; background: rgba(15,23,42,.5); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 50; }
-  .overlay.open { display: flex; }
-  .modal { background: #fff; border-radius: 12px; width: 100%; max-width: 520px; max-height: 85vh; overflow-y: auto; padding: 22px; }
-  .modal h3 { font-size: 17px; margin-bottom: 4px; }
-  .modal .sub { font-size: 12px; color: var(--muted); margin-bottom: 16px; }
-  .field { margin-bottom: 13px; }
-  .field label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .4px; }
-  .field input, .field select, .field textarea {
-    width: 100%; padding: 9px 11px; border: 1px solid var(--border); border-radius: 7px; font-size: 14px; font-family: inherit;
-  }
-  .field textarea { min-height: 70px; resize: vertical; }
-  .modal .foot { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+  .task{display:flex;align-items:flex-start;gap:10px;padding:9px 18px;border-top:1px solid #f1f5fa;font-size:13.5px}
+  .task:hover{background:#fbfdff}
+  .task.done .t-name{text-decoration:line-through;color:#8ba3bd}
+  .task.notdone .t-name{color:var(--red)}
+  .t-name{flex:1}
+  .t-note{display:block;font-size:11.5px;color:var(--muted);margin-top:2px}
+  .chip{font-size:10.5px;font-weight:700;letter-spacing:.3px;border-radius:10px;padding:2px 9px;white-space:nowrap;margin-top:1px}
+  .c-shift{background:#e3efff;color:#1f6fd6} .c-daily{background:#dff4f0;color:#0e8a76}
+  .c-2day{background:#e6f7e9;color:#2a8f45} .c-week{background:#e8f6df;color:#4e8a1e}
+  .c-15wd{background:#fff3d6;color:#9a7200} .c-month{background:#fdeed3;color:#c07600}
+  .c-45wd{background:#fde8d3;color:#b35c00} .c-qtr{background:#fce4d6;color:#b34700}
+  .c-half{background:#efe4fa;color:#7b3fbf} .c-year{background:#e4e0fa;color:#4b3fbf}
+  .c-use{background:#e4ecf4;color:#42618a} .c-req{background:#eceff3;color:#5c6f85}
+  .t-btns{display:flex;gap:6px}
+  .t-btn{width:26px;height:26px;border-radius:50%;border:1px solid #d3deeb;background:#fff;cursor:pointer;font-size:13px;line-height:1;color:#8ba3bd}
+  .t-btn:hover{border-color:#9db8d4}
+  .task.done .t-btn.yes{background:var(--green);border-color:var(--green);color:#fff}
+  .task.notdone .t-btn.no{background:var(--red);border-color:var(--red);color:#fff}
 
-  /* History table */
-  .htable { width: 100%; border-collapse: collapse; font-size: 13px; }
-  .htable th { text-align: left; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .4px; padding: 6px 8px; border-bottom: 1px solid var(--border); }
-  .htable td { padding: 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
-  .empty { color: var(--muted); font-size: 13px; padding: 14px 4px; }
+  .empty{padding:56px 20px;text-align:center;color:#7d97b6;font-size:15px}
+  .empty .ei{font-size:26px;margin-bottom:8px}
 
-  .toast {
-    position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
-    background: var(--ink); color: #fff; padding: 11px 20px; border-radius: 8px; font-size: 13px;
-    opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 99;
-  }
-  .toast.show { opacity: 1; }
-  #loading { text-align: center; color: var(--muted); padding: 60px 0; font-size: 14px; display: none; }
+  .note-panel{background:#fff8e6;border:1px solid #f0dfae;border-radius:var(--radius);padding:14px 18px;font-size:13px;margin-bottom:20px}
+  .note-panel h3{font-size:13px;margin-bottom:6px;color:#8a6d00}
+  .note-panel li{margin:4px 0 4px 18px;color:#6b5b13}
+
+  .doc-list li{list-style:none;padding:9px 18px;border-top:1px solid #f1f5fa;font-size:13.5px}
+  .doc-list li:first-child{border-top:none}
+  .doc-list a{color:var(--blue);text-decoration:none}
+  .doc-list a:hover{text-decoration:underline}
+  .doc-cat{font-size:11px;font-weight:700;letter-spacing:1px;color:var(--muted);text-transform:uppercase;padding:14px 18px 2px}
+
+  /* modal */
+  .modal-bg{display:none;position:fixed;inset:0;background:rgba(15,40,75,.5);z-index:50;align-items:center;justify-content:center}
+  .modal-bg.show{display:flex}
+  .modal{background:#fff;border-radius:12px;max-width:560px;width:92%;padding:22px 24px;box-shadow:0 12px 40px rgba(0,0,0,.25)}
+  .modal h3{margin-bottom:10px;font-size:16px}
+  .modal p,.modal li{font-size:13.5px;color:#3d5170;margin:6px 0}
+  .modal li{margin-left:18px}
+  .modal .close{float:right;background:var(--navy-2);border:none;color:#fff;border-radius:8px;padding:7px 16px;cursor:pointer;margin-top:10px}
+
+  @media(max-width:820px){.sidebar{width:200px}.main{margin-left:200px}}
+  @media print{.sidebar,.t-btns,.pill,.search{display:none}.main{margin-left:0}.m-body{display:block!important}}
 </style>
 </head>
 <body>
 
-<header>
-  <h1>WS Display <span>·</span> Machine Maintenance</h1>
-  <div class="userbox" id="userbox" style="display:none">
-    <img id="userpic" alt="">
-    <span id="username"></span>
-    <button onclick="signOut()">Sign out</button>
+<aside class="sidebar">
+  <div class="logo-card">
+    <img alt="WS Display — WholeSale Displays" style="width:100%;height:auto;display:block" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAbgAAABJCAYAAABPczO7AABgn0lEQVR42u2ddXwc95n/3wPLqxUzWGZbtsxMMdshh9OkzfXXXhnu2l7pcm0KKd4Vr5BSCmmTtkmahpMGHE7MINuyZZlBFuNqV0sz8/tjZta7wl1pJTvXfF+vjaPdgS8+n4cfQdM0jXfaP23TAFXT0DSQRaHP7wrQ5Atz3hvkTFeQBm+I890h6rqCBMIq3rDC2a4gAqAJEAipKKqGKIDDKiEIApqqUZRmJcMmY5NFMhwy49NtuGwSE9LtZNplit1WMh0yTkkcsK+KqoEAkiC8s3DvtHfaO23IJtz91jntbKsfQRJJNdSJAmiKxieWFDM7x4mqaYgjIE5m976z/Twnm/1Isoia4j4LBsF322XuXlWGxyKhGd8Pp5ljrmrx8/PtdSAJKZ1nSYBISGHt1GzePS0n4TlWNb1vvUHtrDfIvgYf+xq62dfYzYm2APXeIG2BCERUULT+Fzp2AnW4u7hgAFqvv83LJBEkgQy7TIbDQonbSkm6jfIMO9NznEzLclCWbiPfaeFygjVN09A0DVEUL3lfVFVFEASE/0PA/39xTO/M7dg3+aljrew82Aw2qS8BSgXCdYfISrMy+4pxqFo8LUwOKPR7T3YF+dJzJyCgDP9hiaBcSGFteQZbJmaiqFq/0k0y/f5LdTO/2XoK3FZSisrGHOdnOWAaQ86x/modBEVBIKhqvFXn5anaVl4+08mRZh+B7pB+oSDoCCqJIAqIsoggC/0wHVofJgSEXoAk9AtQpvTY4QvT4Q1xur7bAEPj/RaJNKdMWbqdGdkObpmVx02Ts3VwiTmgyQCOpmmoqoooigkdclVV9amOefblRCDGAmT7m4P+vns7jam/McYys+b6xiq5kll3877LDUguB6ZszADu1um57D3ZgWSTUVIswkmigCJATav/InM/QkloR50XUdWwpNt0ldVoTIooEPGF2XnBy5aJmSPGH4AjLX5kjxXJYUlpv0VAtYpcOynLOEwDHTZ9DiVRAARq2nu4r6qRR460cKzJByEVZAFkEcluQRB0sNIFL824Px7CEpW4+/urD08hCgiSgGAR4sagqBrengjV/m6qj7VxpjvEzZOz+wqDSRAeQRCQJGlYBEHTNARB4B/PvYCiqlx95abod2MtQQqCgNfr5YE/P8QN119Lfn5eyvtiPq+/OUg1oTSf293dzf1/fpDrt1xDQUH+mM3vQOPp/e5EmakoQI6Q9qVybru6uvjzXx7ixhuuIy8v95Ls3TEFuIVFaSiyiKKoKRfgVE1DFQWqm/xEDBvPSBf71bOdqBENRdWIjBLAaZpue3rjXKcBUsPrsWbcG9HgcJOPCAKqoqZMgBMEiEQ08jJszMhxDNhXRdWBTRIEdjR08/1t53mypoWgLwyyiGgRES0SqqYfBKU/deJoH0Bj3vuoNgFBEpBFEc1pId0q93twDx6q5sKFejZtXD/kIe/s7OS557dyxaoVg4KC+f3Lr7yG3W5n6ZJFqKqKJEns3rOPQCDI1VduujQEyzhHbW3tPPf8CyxfviTlABf7rFdffZ1t23fS1NyMoijIskxRYSGLFi1g0cL52Gy2lBHytvYOnnvuBZYuWTRmANfT08Nb23bQ2NhEU1MzwWCQYCiIIIjY7XZycrIZXz6OaVOnUFCQr9uWh+hXMBgkHI7gdrsuG4Lf0dnJc8+/yLKlS/45AG5OrpOCdBv1bT0IcmrtcJoGSALnOoNc6A5RlmaNap6SlgYFARV463wXyALqKBJgFQ0sIvsbfLQGImTb5WEdXnOsdd0hznYFQU6t/U1EQIkoVOa5SLNIfexvpgOJJAqc84X4yitnuG9vA1owAjYZ2WnRmRBDurtcmyl9KqrWR8tgHtALFxr49b2/Z8GCeWRnZfV7cFVNQxIEtm3fxS9/dS8At95yY/T7/p7r9/v5zb2/Z8uWq1m6ZFFU7eRwOC4LVY8oirjdbmRZHjVp6gc/+innz9exdMkilixZhM1mo6Ojg8NHavjDffczrqyUsrLSlBHL0RrTQGpJURQ5cfIUP/v5r5g2bQqlpSVkZWfhsNtQVY0ur5e683Xs2rUHr9fLpEkTuenG65g5o6LPmM39EQwG+d4P/pe2tnbu+tIXycrKvCzAZCzn9rIAOI9VYk6+m/pGH6IsoaSQddeMCQ36Qxxu9RsAlzzCmXal011Bjjb7QRZHlSBrGoiSQGdngD2N3Wwcl4Gqmuq95IgEgsDhFj8hfxjRKqe034LuEcOKsvS4eYoyFwZj8KcjzXz2mRM0t/UgOGQkpwV1FCXgsWwmwVgwfy4P/NnJsWMnyF7cP8CZ4F9dfZiysjKOHz+hz1E/QGXef7T2OAgCK5YtNd8YJYymDepSN1VVGQ1naFVV+dH//ozOzi5+8L3v4PGkxf1+5eaN+P1+HA7HiDQdYzmmwZrb5eSzn/43cnJzBpDIQlQfPsyTTz3LV7/2TW6+6QZuv+0WNFVDiKENgiAQDIY4c+YsXq+Xbl+3AXDDY+7fLvvlcmwiwKLiNNC0UZl8UQAiGoea/FHQG46qE2D7BS8hXxhJGn3OWRQEiGi8ca5r2P0279nf0A0RLeU+MaqmS5orSj0XAc+UHNHd9j+99RTv/Us1zd0hZJcFzVBZ/l/Z3iaIZWVlkpubQ3X14UElko6ODs6eO8emjes4V1dHS2trHOfdu+3dt5+83FyKi4sMDlgYmqlJgfQ0uhKxNiQBFASBPXv2cfhwDV/8wmfweNKIRCJRYDc/TqczIanEtFuN5pi0FJynQDCIqqooioKiqCiKGgUEm83KvLlz+Opdd/Kv738vf33ob9z/wF8RRAFVvehQomka6ekePvfZT/GlO79AWWnpkHtnJHMzWnOraYw5EKZ6LDLA8hLPqElFmsH07m3ojuF/h9deO9MJqjYmBltNN6Cx7bx32NypeceBJh8IqTVrCQKoioYnzcbsXFe0jxq6U0gYuPmRGp7cU4/ssqLwf0NiG0zNVFExnSOHa/p1ADABrvrwEVRVZfOm9bz40sscO3acnOzsOInPvF9RVQ5UHWTOnFkIgjCgxBbrdGA+I1lX7NjrY59hqpVSRTh693Gw5x88VE1paTH5ebptrz+11mBqN/OdvechVW7qwxlTIgyTKIr9jiuW+F591WYkSeIXv7yXyZMnsXjRgj6eudOmThlW/weam9jf+rs3FaErfdcsuX4N9WxV1RDFvtf2fkaqwnBEgFl5TlxuK6qSeinOBIojLf6o00WyTRJj7G+SyFjQaRUNZJF99V46Qooe05e0elbv94EmH0hiSjkTURAgrDK7wEWu46LqU1V1O9ztjx/lyT31WNKsRAxX/P/rrXJGBfUNDTQ1Nw/IFe/bf4DCwkIyMzPJyc7i0KHDAz6v7nwdTc0tLJg/b9BDK4pi9CCGQqE4QjfUmpu/m9crikIwGIp77kj3japqcYQ7GLzYx8GeHw6HkSQ5TlIeSIIeDCwEQSAcDhMKheLGOpJxmQTRnPdgMISiKCmbs6HGoygqmzdtYOGCeTz08CNEIpGkADvWE1XTtD5z0++ZN35Te3mxhkKh6PvN74Y7/tgxRiKRhNYs0XAb3XtZ7JdxiN0n4XA4ZV66sqZBnsPCtFwne052IEpyiu1wOlAcb+uhqSdMvsOSlC66j/3NIoyJ2KxpIMoCrZ1B9jf5WF3i6dcZYdD7Baj3hTnVHkh5gLdgTM6iorToPAmGQ8kXXzvL33dewJJmJaz830c288BMnToZWZaprT0elTr0Q6kfwkgkQk3NUTZv2oimaUydMoVD1YfR0Pp1g99fdQC328nkyRPj1E+9iWwgEODxJ59m374qvN5uBEFgypRJXL/lmkGdL2K/f+31N3nttTdoam6JHvjy8jI2b1rP9GnTRizdnjp9mqee/gcnT56OEsOy0hKuvfYqpk6ZHC/BGvd6PGk0N7cQCoWwWCxJcdSaptHU1MzWl17hUPVhurq8aJqGy+lk4cJ5XHvNVdjt9mE5Xphjqqu7wJNPPcOx4ycIh8KomkZJSTFXXbmRWZUzR82pQ5c0dAnjmmuu5Jvf+m9qa49TUTEtThJ57fU36fZ2c9VVm/poCARBoKWllYf/9ig1R48SiShYLDJlZWVcv+UaJkwoj4uj6+np4e+PPsHqK1ZSXFxEY1MTTzzxNLXHjhMMBFE1lby8PNavW8OypYsT8vLsj9Fq7+jgpZde5cCBg3R0dqIoKhaLhcqZFdx4w3VkZmbEPdfn8/Hgw39n/drVA+71i+aBTv7+2BNs3rieoqJCg/HSx7d9x06e/cfztLa2R1W8S5csYtOmDVhkedjrKCuahiwILC3xsOdYuw48KfakFESBbl+Y4+0B8h0WVDSkBBWN0fi3C16CvlDK48iGkpLUsMrrZztZXeLRAUog8Q0jCBxr76GnJ4woSylVAZseqqb9TdU0rJLIC2c7+Z+tp5Bdln8KcIsFnvT0dIqLizh0qJqVK5bFzJWKIIicOXOWLm83c2ZXIggCM2fOYOtLr9DY2ERBfn4fddq+fVVMmzYNu90eVa2YhEBTVRwOB+3t7Xz9G98hPT2ddWtXk5ubQ0NDIy9ufZkv3nkX//GZf2PhgvlRotz70Hu9Xn7wo59y5swZ1qy5giuv3IjT6aSxsYk339rOV776LbZcexV3vOe2hKSm/oDg+Re2ct8fH2DBgvm869YbSfd4aG1r5/U33uLLd93NRz/yAdatXR09a6aWZcXyZTz62FM8+tgTvOvWm6Nq2sHUUea4wuEwP/7fn2OzWVm5YlnU3f/EiVM88eTTHDp0mP/84meTBjlzTC+9/Cq//8OfmDmzghtv2EJWZhYdnR288cY27v7Gd3jvv7ybLddePcogJzBt6hQyMjKoOnCQiopp0VAXQRB4a9t2GhuauOqqTX2CxuvrG/ja3d8mPy+Xm2+6AY8njZaWVrZufYWjtbVRgDPvCwQC/P3Rx5k9q5LmlhZ+8MOfUFExnWuvuYrcnBw6OjvZuWs3P/zRT9i+Ywkf/+iH9NCNJMYvCAK/+90faWpuZsXypZSUFCMIAnV1F3jmmefYu6+Ku7/2JbKysqL7wGq1smvXHlpaWvjC5z7Tr7e5KRhsfellnn32Oa7bcnWc5Pa3Rx7lkb8/zpZrr2batClEIhEOHTrMtu07WbN6FVaDuRrOOkaV6stLPPxMEkbF+UASBSKBCAeafCwvSksKKMz26tlOUMc2YFIzlLjb60w7XJL3AvsafBBWo3FmqZLeFEXFmWZlUWFadI79EZWPP3McAQ1VEOCfKM2oeQBmzqhg+45dfQAFYO/+KgryLjqMTJk8EUmSOHLkKAX5+TqBNw56Z2cXJ0+d5l/f/96YFb24AWSLTFNTMz/68c9Yu+YKtlx79cUXzYaNG9bxve//mHt+8Rt+9INJZGSkx0iUmkG0gnznv39Ad7eP7//Pt8nOzo4+Yvq0qay+YiVbX3qFn/z0F0iSxLtvvzVh7YVJPN58cxu/+e0f+MynPsmypYvjrlmxfCl/e+RRfvmr3zJ+fDkTxpdH503TNEpLS7j9tlv4w333EwgEuenG63C73YPaXcy/LRYLn/vsp8jOzor7fd7cOSxbtpjPf+HLPPXMP7jlphuiz0oU3Pbtq+IXv7qXf/v4R1i1akXcNUuXLOYfz73Ab+79PZMmTaRi+rR+90KqmCq73U5hQQHn6+qM7y9e43A4cLlc/d77p/v/QnZ2Fnd//a6439atXR2n+jPXW5Jk8vPzefOtbRw6dJiPfPhfWbF8Wa+xL2L1FSv55rf+G4fdzsc++qGE94s5/x/4wP8jMyMj7re5c2azZvUqPveFL/HAnx/i3//tY1EHFIvFwg3XX8t9f3yAltbWPvZsnTaJKIrC629sY+OGdWRnZaEoCpIkcfbsOR7+22N85tOfZMnihdF7Fi6Yn7AqfFAhxeTW5he4kR0yymhx/RpUNfqGb387N/rxb/1Jj8giexu68UXUqBNHMu1gky/lQdO6h6fK1BwnhS4LEVXnkH5/qInj57qQbHLUq+ufrVVUTKO1rY3GxqY4+5MukR2gsrIyakPJyMigpLiYgwcPRRkHkyDozigalTNn9HvAHHY7hw/XUFExnS3XXq173hmehZFIBFEU+fCH3k8wGOL1N96M495NAvDoY09w5sw5vvaV/yI7OxtFUeI8FBVFYd3a1fzLHbfxyN8f48TJk4M6u/QGe5/Px+/+8CfedetNLFu6OO755v/ffNMNTJo4gb898mjcOE0CfsP11/KJT3yEF158mU//xxd48KFHaGxsumgPGqAvgiCQnZ0VTYtmfsLhMMVFRVx15UZeffX1qN0sMQZGJBgM8ut7f89VmzeyatWKPnOmOxBtYPbsWfztkcdGRBwTbS63i/a2jigoxQJy7PyY69ITCFBTe4wVy5cZc3LRO3UgQNI0PcHA8y+8xA03bGHF8mX97pfZsyr52Ec/xHMvbOVQ9eGE9ktsM8Gt95q5XC5uuvE6du/ZS1dXV5xH6OLFC5EkiVdfe6OP/c98d23tceobGlizelXcNfurDpCZmcGihfMNz1UlpSE40X6OT7czKdsJETXl7uymOu2AAXCJ2rGM5PGc9V6MfxtLt1VNA0ESaWgPcLDZfxH0EgRmMB1MUmx/EwBFY3lpOqafU0jV+MnOCykP1n+72eEmT5qEzWbj6NFjcZJGa1sb9Q0NLFgwL0owAGbOrOBo7fEoKJlzt3fvPsaNKx0wQDccjpCTm821114VfYdkODjIsoymaWRmZjJ92pSLjiwGaIiiSLfPx3MvbOW6LVeTlZUZ5WhNJwnzo2oaW669iuzsbJ57fmtfFcEg9pQ339qOhsZVmzcSiUT6zJdJUFauXMbhwzV0d3fHSZjm/29cv5Yf/eC7LF+2lBdfepnPfv5Ofn7Pr2luadH7OIh3aTyxEbFYLAYjMp3Ozi7a2zv6vbZ/gIOdu/bQ3d3NddddQyQS6XOfOabVV6yktvYYra1tI3ZoSaQpipKUBkYAvF6vwSjEO3f0v79FAoEA06ZNYc3qVXFOQnH7RVVZfcVKxpWV8sKLLw1LE9I796a5ZlMmT0JRVJqamuMALN3jYdGiBbzyymvRc9S7vfzKq5SPK2PipAlx50mWZXp6eggEAtH0ealMAyeCHhclC7Cg0A2KmtKATTA8EiXd0aQrrEbzHCYkQQE7LnQT9IWRRHHM47ckUYCQwhvnuy6CdQLqSQFoCUQ41tajh2CQYvubKLC85KJ68s06L7UXvAhWMeU5RQc7qJIgIIv6RxQuHt6BPqJA9HpZFJBE3eYz0i1nEjGXy0lZaQlVBw/GIcGhQ4ex22xMnFAeJRgmwLW1tXG+7oKhCtKdUQ4fOcr8eXMGJL7hcJiSomJcRhzYQC7lWdlZdHR26oc65llHjtTQ09PDkiULB7QvCIaa2Wq1Mn/eXKqrj8QQEG0IDgh27d7L7MqZOJ1OZFnuA6AWiwVJkqiYPo1gKER9Q2OfPW5KALm5Obz/ff/CT370Pf71/e/l8JEaPvu5/2LPnn0Dei3GegqaBCsQDOL1dhMMBtA0jXAknNQ679q9h+nTp5GVmYksy8iy3O+YJk+aiKIoUdXhaAKcqqg4nY4h32POpd1uZ9GiBTzx5NMcP3ES2XCiGCwGzLRrTp82NU7K7o/JE0WR+fPnUhvHuGlJnSVzPs33er3dugpf1JnF3m392jXUNzRy8FB1FPhMZs7n97Nn737WrV2NgBDnrDR37mwiEYXf/f6PUSYvWalzSBucOfQlJR7u31E3SpKQQEt3iBMdAebmOpPypHzVjH9LsQNMMra018508rmFRQnZAE2j6vH2AJ3dIQQxtRKcomrITpn5Be7od4/UtOi2Pqs0Jmm3JFFX8ykhRS+hE1P6ZsBJ0vTySaqixnMCkgCiiCAJUcnXzIuZzEhUVUOSBCpnVvDSy69FD4wuke1nyuRJWK3W6EEFmDhxAna7nSNHaigfVwbAqVOn6ezsZO7c2TFQ3neNrTbroPtGFAQyMzKorj4SPdTmwT19+iyZGRkUFhQkFEM0ZcokXnvjTTo6OsnJyR50P4kGgejq6qK5uYWf3/NrNLQ+9Rw0Lnq3dXu7aW9r79feaBJITdNwOBysXXMFy5ct4de/+T3//f0fcffXvsy0qVPibF2x492xcxd79u7n/Pk6enp6dJf+SCTqYJKYqknvQ1tbO52dXfz8nl/TfxpjnbD4fD66fT46OjpH/Sx0dHRQNq40ISA1gezdt91K/YV6vvTlr7N503o2rF9LSUlxHGPQXysqKkyoT6UlJTzv3RqzX7QE6HSMOn9/Fbt27eHM2XP4un0EgkE0TSMSUeLMH+a6TJ06mfLycby49WXmzpltgJR+Hvfs2Yuqqixdsjg6B+Y8FBYU8G+f+Aj/+9N7OH7iFDdcfw2LFy3EbrenDuBMleTS4jSwyaPipSiJApGeCNXNPubmJlYbTjJsXmORf3JQacmwwwUUFbskDpmX0nSiOdTsh5CC5LSkLMhaFEANq0wpSGNCuj1Kjl4/2zk2cySAoIHiD2N1W1lYnsGyUg+TsxyM89jItMt9kmqb/x9UVLqCCnXeEB2BCCc6ApzrCnK2I8DZriBt3SEiPRFQDdCziMjmfCfAWZjXzJhRwd8fe5K6uguUlZUSCAQ4WlvLu2+7NbpAgnEwXU4n5eXjOHDwEFdu3qiD4b795ORkJ5SBYqg20EHt9vmwWq0J5wR0u5xoqkooHBpUR2kSMr/fj9fbTV5eLk6nQ4+d6r1rBfPZLu54z21MnDRhQJtVLFFSVRWbzca/ffKj1F2o5/4H/so3776rjxt89eEj/OY3vycUDjNn9iw2rF9LXq7en+rDR3j4b48iCmISZ1EjEAjidrv0Man9AIHBBLtdLm6/7RamTpk8Kna42Oz8DY2NrF6z6iIzLwwNcGlpbr78pS/y9DPP8ew/nuf5F7aycMF8br/tFgoLCwYEuUSzOGVn656OgUAgqfGcPXeOe37xG9ra2pgxo4JVK5ZTWFiAy+WkuaWVn/7sl/3eK4oia9dcwf33/4WWlhZycnIQBH0vvvTyayyYP4+0NHfcuMy5WLJkEQWF+Tz40CP88le/5c9/eZgbrr+WTRvXj3jd5NjFn5bloDjTTl2LH9EyCgHVqkZVo487KnITsr+JApz2Bqlp8o25/S2WUxdkkQvtPRxq6WFBvivheLjd9d5RcTBRIypLSjxIRhca/WFOtAX0YPJRFHEFQFA1VOAza8v56LxCpmSkhtNqC0Y40RGkutnH7gvd7KjrorrJT093SKdYNhlJEAadd3MfTxhfjtvl4uChasrKSqk9doJQKExl5cy468x1rJw5g+eef5FQKITVaqXqwCEqK2dGJZCRZoYYTMpK1P05bKiaLLJlQKkyFuVlWSYUCrFgwTyuuWrzsOyZA/0mSVJUOr7m6s3c84tf09TUTF5eXvT76sNHuPsb32Hzpo28+/ZbsNlscc8JhkJJn2dBFAgGAyxZvIKbb7ohZWMayboePlJDKBRiVtQZKXF1uizLXLflajZv2sC27Tt48MG/8aW7vs6X7vw8EydO6Hd+Eh1GR0cHoij2mffBxnLhQj1f+/q3mTZtKv915+fxpMXnHi0sKkSSpD79Mud2+dIl/PWvD/Pa629y4w3XIYoi9fUNnDh5knffdku/0qkp6ZWPG8cXP/8fnD9fx9PPPsevfv07Tpw8xUc+9K9RteWwbXBmFWunLDIz1wmKmvoNYYgfpqPJUEyxSaj3NnQT9F8a+1us9KkFFHZc8CZkhzPHVtPiB3EUQi8EmF94UT15qjOIryeMmGJnlv4OlxpR+d9rpvDDteOZkmFH0yBiJG5WjFI76gAf83fz+khMdYAsm8zCfBfvm5nHzzZOYNf753D44/P52U3TuHpWPnluK0ogTEcwMiThsFqtlJaWcOTIUQAOHjxEQUF+nyBVcwtOnz6Frq4uGo0yKXV1F5hlgOFotczMDCMRr29QIDS/ra9vwG63k2YQnYGOpxAjObpdLhobm1AUJeqpp/Tz0T3w1KTtNAAFBfmAQJe3O24NHvjzg1RUTOP977sDm80W52GajGQRPzYBp9NJ3YV6lJhnDTwmZVSZYkEQeP6Fl5g4cQIlJcVJBcLHpuay2aysvmIl3/3uN3A4HNz7u/sGdFoJhyND0llN02htbcPhcODxeIYEePNMPPS3v+NyOvnC5z6NJy0tmofT9GwcaM1MkEpP9zB37mxef2Nb1AHorW3bycnOZtKkiQPOjxlfqhmB+h/50L/ykQ//K8899wK7du8dkU1OjJWYAJaWeEYl3kzTNJAETrT3EDLSSWlDqfmA1852gaJd+izcgqEqHUo9aXDn/oiqO5hIqfXgUlQNwS6zrNgT/a7VH9KZklGMEpQEATWgsGZaDv8+t4CwokWLfkcdRgwJSxzgY/4e52QSVWsRB34A5Wk2PjGngKduqeDQR+fzp/83m/fNLRhUgjHtjzNnTOfcufMAHK09xsyZFX2AxDz048vLsdsdnD59hpOnTiMIItOnTR0Vzv9i1pUp+P3+aEWDAZ0LjH+rqg5SWlqC3W5LKFkyQHFxEcePnUCSJGRZdzCR+vmIothvCqVEzrT5LlmWojaZltZWTp85y5rVV+j1BRUl+h7TcSHZci3meyaML+fkyVO66VaSEAYdkzQqIQKm48bOXbvZt7+KG2/YkpD9rV8CbHjuRiIR0j0ebr/tFk6dOk1DY2MUOGJpy4X6xkGZbMHYYzU1tRQVFWKzGRVcGDgwXxT18IvDh2tYbbjx65J4/Jqpig52/c+p3qE1q1dx/vx5jp/QQ1refGs7q1YuH9LRxVSBx4Z6TJ06lZ07d49M49X7IC0uThsVW46qAZLI2Y4g57zBITeESfjeONeVcjf74agpkUV21nlRtMHL5pj9PNERoL4raCSxTpV6ErSISkmmnenZjigxP90VHHUmwCzNs2F8Borhsp3KcBJBiPfINPdMRNWlv1y7zB0zcvnY7PxBNQDm1zMqptPt83H8+AlaW1uZM2vWgBKf3W6nvLyMY8eOc+DAIcrLy/rYC1IJcJqmMXHCeEpKinniyacHVGeahPTwkRoOVh9m7ZorLl6XQL9WrVpO7bFj1NYei+YWHAikBjqL/f2mcTH8orb2GE6ng/z8/OjvnR2dRCIR0tx959C879y58yhq8pqipUsXc+5cHQcPHtJDHfoJFRhqTMmqlGNj+Uz1b23tcX74o5+xacM65s+bm3Qas9j+CYIOdIqiUFJchChK9Ph7et2jYrNaOXDgoBE72FeqMWMK6xsa2F91gFUrl8dIaIP3KRgMRu2bvQPvTVA7eeoUfr+/3/JS5tgrZ84gPz+Pnbt209DQSEdHZzT2baBEzbFzEevQVFRUQGdn54gYTTHWJgAwN9+Fy21DVdSUywOSKBAOhDnapi+eOggYCgKc94U43OQDi3hJC3Ka8XCn23o41hGIk3gHkiCqW/xoASVKrFPG/UdUFhSmYROFaCqusXS+udAd1qW5MVgPM6RANPJJRvopeDrQQSsrKyMzM4MHH/47nrQ0Jk4cH/d77/WaVTmTQ9WH2b1nL4sWzh82R56M/eXWW25k774qnnzqmbhktibXLssy7R0d/OQnv2BW5QyWLV2cECE1icT8eXOZNm0qP7vn13i93n6lpqHir/rLVi+YfWtv5+FHHmPd2tU47PaoWi0vLxeb1UrtsePRvsaOqbGpiccef1K/R00sfswc08wZFcyfP5ef//I3dHR2Rl3skxnTYM2co952otgkzs89/yJ3fe0bLFwwjw9+4H3J2xJ79c9kAiRJ4mjtMWRZIi8vN04VrTNiNs6ePc99f/pzXKJmE+hMj+Ff/uq3FBcXsXLFsmiA/FAaBYfDgdvtoqamNi6I39yrgUCQBx96JCqpD8QMSZLEFatWsHfvfv760N+YOaOCjIyMAZnFWAnR3F+m5H3y5CnKx48b0VkUYzloTYN8h4WZeUbAt5hq7hWIaHr6qlgDwwAgse28lx5v6JLa38xuSpJAxB9mm5G2aygCf6DJl3LkEYzOXDEufbDpG5WmaBqCTeLPVQ2c9AaxSiKKoU4cC4A1VaFSgrXHbDYr5eXj2LFzF5MmTcRms/WrxzefVlk5g5aWNtra25kzZ1ZCXGMyabN6H2pV01i6ZDG3v+sW7v3tffzuD3+ivb3DIFx6EPbOXXv44n/ehdVm5ZMf/0iUgCXaB1mW+cTHP0wgEODOL32VXbv3EAwG467p6urijTfeitbFM4HI7/fz5a/czUMP/52Ghsa4PJ3BYJBt23fwxTvvYlxpCTdcf20UeDVNw+PxsGL5Uv7+6BNUHThoEDEBVVPZt6+Kb3/7e8yfPw9RFGkzQhNix6Fp2oCbWxRFPvqRD+B0OPjif97Ftu078feSdrxeL2+8uY36+obE10nT6V9nV1ecVKEoCh0dHdQcreXBhx7hM5/9T/78l4e59eYb+Y/PfLJfQBxqHzQ1N/PY409Fq17Euubf98cH2LRxPR6PJ06S0qvL93Dddddw9GgtP/jRT2hqao4Lij59+gxf+do3OX++js98+t+wWq1xIDnQvlFVPaHyhg1refmV13jl1dfjQLjmaC13feVuxpePIzc3l0CvPdQbLFetWkFPTw87duxm08b1/a6B+fcrr77Om29tj1YQ0D1Tvdzzi1/T2dnFZuP+YSdb7k3EZEFgYXEaO2rbRseik0RtOD3/5KWJfxuwT2c6ef/MvEGlDoB9Dd0pdzBRNQ1sEgsNB5OxtEuaUmybN8S6+6q455opXFmeEfe7YnD3ghG4fanMpiYxnjVzBi+99Apz58weUuIbV1ZKZmY6GUZs2lDqSVEQBuVmY5/fny1INDjW22+7hfy8XB58+O+8/vqblJaW4HA4qK+vp6uri8WLF3HHe27rV91n2r76y/xgcsRFhYV8+1tf4/e//xM/+vHPSfek4U4z8kkqKt5uL6qq8fnPfZqc7GxAL60kSTIzKqaz9aWXeebZ50hPTyc7O5NwOEJLSys9PT2sWrmc97z7XXFJfU0u/I733E5nVxff+vb3mDhxPB5PGk1Nzfh7erjt1ptZs3oVH91/gGAw1JcoSRKCOPCYsrOyuPtrX+YPf3yAn/38l7hcLtI9HhB0gPZ6vSiRCP/xH/8+qMt9nHbJYB7++3s/xO1y63vYOHMmU5CdncWqlctZvXolWZmZcXttMLtS7+bz+Xn62X/w6GNPkJeXS1paGq2tbbS2trJp43pue9fN/XgbioRCYSZOKOfaqzfzP9//MV+88y4KCwtI93hoaWmlobGJiRPH881vfGXAPdyfDdRkTLZccxVtrW384pf38uRTz5Kbm0NrSyudXV1s3LCOm2+6ni/eeRd+v39QgMvPy6OkpASfz2ckoB5Y63D27DmeefY5srKyyMvLRVEU6uvrcTpdfPEL/0FeTFWQYcGNFgOtEVVDFgUerGnhtgcOpjxzvygIqCGFipI0DnxwXjTzRX8SE8C83+1n/+kORJt8SVWUF/seYUqRh+oPz0Xur/wJF9NmTfvlHk41+VIWbiEaHox5mQ6Of2wBaRYxul6PHWvjhj8dQLLJo57FRBAEtLACgsD6KVncPjOP9eUZlKVZ+wVkc+ziJQC9SCRCfX0DxcVFCdlHGpuasMgWsrIyh7y2tbUtSvQGa97ubnzdPsPbcGAwDgaDHKo+zIkTpwiFQpSWljBjxnQDdAYmpKqqcqG+nvy8vGhKpf6eD1BXd4GjtcdobGoCDXJysiksLGCSEezeXwuFQpw8dZqzZ8/R2NiE3W6jtLSEaVOnkpGRPiSRP1JzlMOHjxAIBJkwvpzZsytxOp0ANDQ0kpGR3ufd+pgayMvLxTrEmBoaGqk9dpwLF+p18MvOoqiwkEmTJiQVLBwOh7lwoZ6W1jZCwWC07ppFlsnNzSErKwuPJy2uj0Ptqba2NsKRCPl5ef3Oa01NLSdPncLr7aagIJ8ZFdP7BHJfrDrRzb996rP8v/e+mzWrdVvssWMnOFpbS1tbO7m5OUyeNJFJkyYOuiaKolDf0EBBfv6Ajj6nTp1m/4GD+Lp9lJQUM3t2ZTRHZXNzS1SdOZBUGIlE+Mxn/5Prt1zD+vVrhpyrhsYmjhypoa7uAnaHnUkTJjBzZkU05d1I7OBxAGfGnp3oDDL9nt2EI7pxUUsZcdQzWTjtMrUfX0Cx29onMNLswxlviKn37CIYGl4fBAG0kMq0IjeTs508WdWIZB8+AAiGlCLLAjUfX8DEdHu0r737frwzQMU9uwlHtJRRdEkUUHrCbK7M49lbZ6AaWT4kQeD1Oi+r7t2LKI9NMVhT+tCCuv3EnWZldoGbZSVpLCr2MDPXSXm6HbskDAh6ggAiwqX3jr0M2mAEIBXVr2NzS6aqX0P1bTDClIrs/gmNaRhVS4Z6Z38VyoerYUjkt94A9/733cGqlSsGlYpGAgqDMVJDrZl5zXMvbOWxx57kf3/4P1islkHXafB9oo3YTCb3sZEB5R4bE7IdHK3TcxumytiuaSBKAn5/mGPtAYrd1j614UwPsZ0XvHr+yWFKJZIgEAkrLC9L57ppOTy5rz6a5WDYdjhRIOKPsKu+2wC4+Gws5t/VzX7CPREdUFOEOHqBU1hW4okBU8PNPd2Gw2GhJxhJKUMyqKoUkBz69ukORHjzeBtvHm0FSUCyy5Sm25iW42RWnot5hW4qc51MyLBjl8Q4pkAxqo3roQSjp65MNRAkem0i18V6jplbPTYB70jH2NtJJPYdg6nSYvtlnl+Ei67og/UtNs5roDElQ+hTNabBCbTWP4Ew1JXJPnOgtY9V5Rrl46Jzk2hl7FjnklghIRHnmqHUqkOtWX9jMsGtq8vLgw/+jX95z+1YbdYhgTFuLvrsr5ETBLk3EVVU3Q1+UVEaR892IgpSSqUCs4jo/kYfq0v7FhE1X/Xq2c6Lru/a8FFhUVEaK4rTkFxWFCOAfdiPM1zlXz3byW3Tcga87mCzX+97qkHFIrKyLD1m4+m/FbmsjMuwU5NihmSoZoK3IAqINjnqqKQoGqeb/Zxu8PEPtQlEAcEuUZZuZ2aek8XFHpaVepib7yLLJkfXXzXBTkxdRF8yBGk0rk3mumHbGUbxHSOVVhIBwUs1b337KqRU5BtqfCPt93Cl4KHem+yaxYLY937wY8aVlbJmzSpDAhPHdA0HBbhYgFle6uFP20ePOFY1dQ8oeWkY9d9GEP+mqHp6p3kFbjKtElNynRw5PzIAUDVAFnjrXJeRLjE+56L57976bhBS5xcjAGpEIzPdxuw8V5RRELhoN11W6uHomU5EmzTmOTs1QxIjluuziAhWIaraVTSNMy1+zjR283RVE1hE8tJtLCtNZ+PETDZMyGBSuj06iRGD0XpHg/lOe6ddvi1a/qm7m5/89Bc0t7TwrW98NaHYu7FoYn8SFugFUEcj8bIJEgeb/FG1X+xvggDnvCEONw8//k0UQFNUCjLtTMm0RwF7pLXuNE0DWaKm2c85b5DeRbMlUSCiaVQ3+/S8kKkK8BYFUFRm5rrINKoF9B7GtZOz0C5xQHws4Kka0TAC07tStIhIDguyy4JoEWnqCvFYVQMff+QIlb/Yw1UPVvOXIy34FR20BRM432nvtH/ypgd2a1xOLJ+p6nz1tTf45L9/lpbWNr7+1S+RnZWVtEZkzAAumpE9x0FRpg0txQVQNTQQRU629dARVKIcflQNB+ysN+xv0vDi3wRBgLAeEO2x6u6/68dn6m772kj6roNYyB9md318DkHzuQ2+MOc7g7r0SQrtb4rGCkM9qfYCVQ3YWJ5Bab4LNaykvJ7faICeqoEgCzrgOS0EwgrPHmrm3X85xOxf7eE728/jjajRoPJ3cO6d9s/YTJBwuVx87av/xfz5cw3AEy/9mTbOZHNzM+vWXsH/fPcb5I/QrT/VTe6PmCqahkMSmVeQxoVGH4JVghQ6mgiSQIcvxLH2HhYVuPs4mkTtbyMBBA2uMAABYHlxGna3lUAoMnI7nKLb4W6akhV9jjmGI609+P3hlFZjMKXeFaVpF8cXM9aIqifK/vjCIu58vBbJKl2S0kLD2QtKjNFaNJxWjjf5+K+njvG7vfV8ZXU5/2JUn1ASqOIwWNHIVBKckXrRDaePw7VVxDo0CAk8q7djSaKOG6M99yNdg7Ge91RKSpqmMWF8uU4PRlAMdLDivMM9w7GVHYYCt1SugaqqQzjKCsgDIrMAS0vSeGpfw6ik7Ir4Ixxo9rOowB19X6rsb6qmgVXU82oahLHEbaUiz8neU3pc3XBVXyqAJPDWuU7DTT9+zg42+VJaeFRAD8h1ua3MzXf3e7AlQzL92JwC/nd7HY1tPYgW6ZLHDiYr4ZnqcNEiIloljjf5ee9fqnlyXgE/u3ISeUaYhzTKxvuE94JBaJJ952j3UQM0o2+mV91g7+vt7j/k9QPUcrwUQKDGjPNyB6pUgVKqpbdUhD0kGj6RqjVINPenPKCUAiwt9oxeHkgNDjR2Q2VeVEoRBTjXHeJwk3/Y79VLumhkp9upzHVGny0Juh1u7/H2EXlmaqruzVjd7Od8d4hSt1VXtxm/72/0pTT2RhQElIhCZb6LQqfFcKnvR+pGI90q8ePNE7ntTweRrLwtpLiBJFZV0xAtEoIVHt5dz94LXh5+1wzm5jj7BTnzgLW3t9Pc0qpnpkjhvtUMwpLu8WC323C5XHEHzDzkiRw6n8/HhfoG/dpE+ijoqbuys7LIzs5KKMZMMPqhKApNTc3UXbhAU1MLTU1N9PT00N7RSSQcJqIoRCK6VsNms4Gm4Un34LA7SEtzk52dRXp6Orm5OWRnZeJJTx9QBd7e0UFzc0vK5z52HjSj2GpGRjppaWlx8z2QS7rJ5Xd2ddHU2ISYaP+Mec/PyyM93XNJJDe94noHTSOeVwFNU7HabJSVlsQ9v7m5Ra8fl8zzjbnJzckhMzNjSIna1AS0trXR2tqW+FiMsAWHw0FJcVFcmELtseMcPnyE9o7OuOo0giAQDoWorJzZP8CJBoWeneckw2OjozuEkEIHBk2vKUOVURtOEgQUgyvcccFLwBcadvybaGQYn1vgJqOXQ8bqcRn8VDqbAjucSKA7xN6GbkonZemFMw1bWFVjN0ipq8ZgqkQXFl2URvvLoiIJAoqq8a4p2fxjeQl/eO0sljRrNCHz2xPodM9M2W3hRKOPdX+o4vn/N4sFua4BJbk/3f9X3nhrGy6XC1VRU7QI+qYVBAG73Y7NZiUzM5PCgnwmTBhPRcU0iouKLqq+B8wioSJJIs+/sJU//+Uh0txpKAmom0RJxOfzsWzpYj79758YlBiKokg4HOZQ9WH27t3PiZOnaG5uwd/TgxotdSLolaFj4rui821oDDTNjIXSQdtiseByuUhLczNjxnRuv+1WpJikvKIo8sADD/La62/icqdw7nudBTP5r9PpIDsri0mTJjCrspIZM6bHFeOMC5ZWVQRR5PEnnuKJJ5/Bk8S8d3u72bhxHR/6wPtSEqCebFNUlR//5B6OHj2G3W6LK5+TNB0xGJ6vfPk/mTx5EoqiIMsye/ft5ze//YNRA04hEQ5dFPXsO5MmTeSrd93Zb57U3u8PBoP8z/d+xPnzdVisVl1YGErbJ4l4vV42bljHhz74/mhC5yefepY/3f8XQqEQFoscR9P18+LH5/cPLMFpml6EsiLXyVsdAQRJTpnThIpefuZYWw++iIpLFmPqv40s/s0MiF4V45BhcpxLitNwuq34AxEEceR2uG11Xq6blKVzJ0BTT5hT7amtrK0ZetCVpekXxzfIplNUjV9tnMjptgCvHGp624McQETRkOwy7d4Qm/54gG0fmMuUjL6ZZEBPE2S1WrFaLKhS6olsOBwmGAzS3t5Bbe1xXnntDVxOJ5MnT2TD+rXMmzsnynUORAzD4TAWiwWr1ZIYoRVFwlbrgLYX812KovDi1pd5+eVXOV93IZpE12Kx4HI6++Q5GLAGXVwORH0PappGIBCgs7OTjo4ObrzhOlxOZ9wzRnvuY/vt8/np7Ozi6LHj/OO5rZSXl3Hl5g0sX7Y0DvDjwCKiYLVasVgtSAnOu9Vq7bfM0FioXkVR5PSpU5w6dTpavmlE2iAjEHvb9p1MnjwpGmS9ZvUqXnn1derrG6J5RRNpFouFkydPcfRoLRUV0wfc8+b31YePcP58HW63O2E7oqZpZGZmsmXL1QbgSbS3d/DoY09QVFTAjTdcR3FRYdy+Fox3ZudkM2DVQVNSWFbq4a2aVj0XYgolOEESaOoMcrIjQGWOE8k4fG8a9jd1JPY3i8iykouVj0UjJq3IaWFmvoudJ9oRbPKIDKtIAq+f7Yzjjo61B/D69MraqZgrweDgbC4Li4rShlQDCIYEKwnw6M3TuVmArQebkN3WaMaQt2tTVA3JLtHWEeTmR46w431zsIrQ23E6PjPC6JS7kWUZWZax2y9m6zh48DAHDlYzu3Imd9xxG0WFhQMe+GT7ONh15jtOnjrF7/9wP8ePn8BqtUbzPZr3JuOYMNC7JEmKPlsYYG5Gc+5790WSpGi+ybNnz/Ozn/+anbv28IH3vxePx9NPwuLhzfultNvt3LmHUCiE3WYbsalINdS7Bw4eIhAMYrfZUBQd9K+9+kp+es+vsFqtCa+dKb1v276TiorpQ4kdvLVtx5D7ufcad3V52XLtleTn5RGJRJBlmebmZvx+P5/51CeprJwxOKgP3iUjNdQoxFeJgoASUqhp7YlKH+e7Q1Q3+UEWh+lpo9vf0j025pgB0cZITAeGZaUeULQRhT6YEuiBRh+NPeFozbf9jT4IKykrM2TWf5uc7aQ0zWpUC09gDjTIsEo8e9tMPrCyjEhPGC1yMbbsbQtyiobslDl4op2vv3lODyG4BIbGWNAwgcPpdOByOqk6cJC7v/GdaJmYkXi8JdIPURTZs3cf3/r29zh9+gwejwerIe0Nt+hnIuO+1K33GthsVjyeNHbt2sM3vvU/NDe3RAHt7dhEUSQSiXDgwCF9PVMwDk3TsFotNDQ0cuRITZTSa5rGokULmTplEoFAIKnUdjabjaqqg3R3+/qt2q3vUYHWtjaqq49gt9sT2j+CIBAOh8nJyeLqq66Ms2+73e6odA164upIJBL3CUciOvM3KHEF5uW7sbp0VUoqiaOp5jNL5wDsrO8m6AsNO/5NNABhToGLbLtegSDq4mxcs648w6hYro1go5j6+SB7zNp2wP7G7pSW9RGN+nnLSj2IMSCdyH2qpnsQ3XvlJO67fSb5HisRX1i3YYhv3yTHiqIhOSz8+M1znOgMGnXGLj0RMwmt2+0mGAzxwx//lMNHakYN5FRVlyxOnTrNz+/5Naqq4nQ6UBTlbUvUR0q8FUXB40mj7sIFfvrzX0bL3Lzd5sPcL0drj3G+ri4pqSrRvbNjx644qVaWJa7bcm20eneic26xWGhpbWP//qp+59r8e9fuvXR0dAxpq7sI8AL+nh42bliHx5MWV2+wqKiQ2bMq+d0f/kh7ewdWqzWqVTE/FlnW6xAORiQ1DUrTrEzN0QugplJU1wzUOdR0ESBeOxNjfxumSg9Vi7O/xYEfsLgojTSPDVUZWSoZE3y2ne+KjudQkz+l0q5mvMi0vyXdP0FX2b63Ipf9H53PJ1ePw2mVdKBTdMeYt1s6LA1dvR3sDvGDnXVxiQIuDwBWsFgsCIjc84vf0NralnJJwkyDFAqFuPd390VtX4qi8s/eIhEFT1oaR48e47HHn3pbS3G79+xNCnASBU+73Ub14SN4vd163ldjjubMrqRy5gz8fn9SzjSiKLBtx844wShWUNI0jZ07dyHLloTWQi8fFaKkuIj169b0W2HhU//+cYKBIHd99Rvc+9s/8MSTT/PMs8/xzLPP8ew/nueJp57hSM3RgW1wcNEOt7g4jYMnOxBtqbXDIYscavYTUjWsosAb5zpHGP+mP3NpseeilNhLdZdrl5md7+aNo62I8vDj4UzwedWww7UHItS2+kESdRVmKjajoiE7ZOYXuC6CVpKALxjelQUOCz/dMIFPLSriJzsv8NChJhpbe/SJsYq6V52xeS738AJF0xCsEg8eauKbq8rIsskoqppQte/BDtVgrvfJEhGbzUpraxt/ffBvfOLjH06plKmqKrIs89a2HZw8eQqPx2N4vyWnAhtsbL3nYzRBol87pXHGhmPPi0QiuN0uXnr5VdauvSJaU+/tpJ4MBAJUVR1Myukj0SbLMq2tbVQdOMiK5UujzxdFkeuvv5YjNUcTfqcOmHaO1h6nsbGJ/PyLmUwu2odPc/Lkaex2W1IAd83VV+JwOPrYsgVBYOeuPXT7fHi93Tzz7PNomhqly5Io4fP72Lxpw+AAZ7bFxR7uTTGbr2l6cNr5ziDNPWGsokh1kw/kYca/obs3u91W5uS7jO96Rb4boQgryzy8caRlRJKLqul2uKqGbnoUlbruEO0pDKfQqy4ojM9zM9nIpzncFFxmILiqaUxKt/OTDRO4a2UZjx9t5eHDzbxxtgu/1yhDL4sgi1G7omp40F1OmKdpIFlE2tp6eOF0J++amq3HOo4A3ELhMOFQqM8eNR0ZkpUEFEXB7XaxY+duNm5cx+RJE4loCoOYvZMDBE032ptFIZMZq6qqdHd3I4giNqu1j9pIURTC4XBU3SmKEhaLjNVq1dU+KXaV9/v9fYBWJ5IiVqslalNMiohLEp1dXbzxxlvccP2Wt5V6UhRFjhypoampGafTmdDYk3WGEUWRnTt3s2L50igzo2ka06ZOYd68OezcuVsPtUnQ29Tr9bJj5262XHtVn75s376TYDCUkKrVLP47aeL4KPj2Lq/U3t7BfX98AKvVyh133EZZaQmiIMaBgaqoFBYWDA5wpsSwuMiN5Eht4mUzniziD3OqI0ggohL0hvQq4sOOf1OYOVhAtPH32vIMvjPCAHZNA1EW6eoMcqilh3OdAbSAguRKTRV00VikxUVpyIYUJokjkVAw8jrqGyXXLvPB2fl8cHY+p7uCvHi6gxdOtrPzvJfT7QEi/rCJjiDr8VWmN6pZu+lSgp4ACCq8eKqDd03NHsG86AeqomI6K5YvjWb1AL1q94mTJzlUfQRVVbFaLEmDSSQS4cUXX2ayUWk5VRx+W3s7586dS4r4C0ZwrixJbNq4nhkzputVs63x1djD4TAdHZ10dHTS0NhIXV09dXUXaG1tpbvbp8cdpZCgX3/dNRQWFqAoqs7YaRqtrW00NjVx/PgJ6usbcDgcSdMXi8XCwUOHuf66a992GUx27NqTkAOVnsnfx6qVy+np8bN7z35crsFB0fSmPFp7jJaWVnJysqNnWhDgui3XsG//gYQduHRbnJVdu/dw9VWborYyXRINsnff/oQlUfPMXH/9FmRZjjuPJsA1NTXR3e3jzi9+hDlzZg/O6Az1MoCpmQ5KMh2cafKlNMeioCdS5Eirn4bu0Mji3wynlRWlnjj1atxmwHSccekB7N4Qgjx8iUsUQA2rbKvror0nAqqWcnvWcsP+liqCotvmhGgeSFHQC9x+cFY+H5yVT4+icajFx5vnvOy+4GV/Yzcn2wP0+EKoZoVyWQRJRJJ0GVm9BGpNVQNNEthzwRuXMm04jFEoFGLK5EmsWL6032tqjtby29/dR1NTc1IGf03TdHtH9WG6urx4PGkpG39TUzM+nz8pFZZ53cc++iHmzh2cMJSWlMT9HQqFqKu7wKHqI5yvq0OW5RTRAIHVV6wiJ6d/JiUQCPDi1pd55O+PJ+ygECW6soWGhgZa29rIyc7mcrfEmaDg8/k4cqQGm92aYDiDyto1q2hr72D7jl0J0SDTBX/vvv1s3LAu+m5VVSkfV8bK5UvZ+tIrCcWs6d6UVs6cOcvx4yeYOnVK1KW/uvow9fWNQ4KuCdb+nh5mVExn3tzZfTIDmXjkdrsRBAGnS9fUBUMhJPGiY6JgzqUkDQFw6J57VlFgQZGbMxe8KcuxGCXaksA/jrfT5AsZ6snhS1RIQrTi9UAgqBoB7LMLXLzaHtDtcIwsHu6FE+16MLWcOgcTRdUQ7XI0ni/V1a4FgSgDYKbGEgCHJLAw383CfDegB1Ce8wY52OxnX0M3++q7OdDk42R7AKUnok+CLCJazKwWY6PO1NBAEjnTEaAjqJBpE0dEZMPhcNQTsrcKbtrUKXz6U5/ga1//dhxHmQjBkmWZ9o4OamqOsmjRgpSNPxwORznaRDnjUChEYWEBc+fOJhJRDBVs/xWgY58pCAJWq5Xx48sZbyT8jf1tpDYiXUWZ2a+azW63c83VVxKJRHjo4Udxu10Jq+wkScTv76G9vUMHuMvc2cQc/4GD1TQ3twwJLua+zcvNpbx8HDm5OaSnpxNJ0DFFliV27drDxg3r4vKQamhcc/WVbN+xOyntQCQSYdv2nUydOgXTb33b9h0Js+eaYUK68cbroqr0/uIYi4uLWLhgHn/+y0N84XOfjsZ8Ji3BxUoOS4s9PLKrPqULahYlfaqmBUUDbNKw7W+KouJwW1lY6I5y5v1z/vokXlGWwavVLSPKS6loev+fO9amP8cqp6R+mSCAFlYpznEyKcMex72MRhOFi/NlqiDN/JqSKFCWZqMszcbVEzJ14qpqHO8IUNXoY+upDl4508HxRh9EVLDLY+K5ZiYL6OwJc747RKbNOWJJwgS23gAXiSgUFxWxbu1qHn/yadKSyMRg7rljx4+nFOCGQzytViuNjU28tW07y5Yu6aO26m8uYu83U3elOmmxadfrD+DMfq1evYrnnt9KKBRKqtp3OByho70jhiO9fJs5rl279iAIiSWPDgaDzFiyCKvVSpbVyuTJE6mqOjik7c5UU548dZrz5+soKSmO0kZVVcnPz2P16hU89dSzCTkxmTFx+6sO4PP5cLlctLS0cqj6cEKxb7rk6mfxogVMmzpl0LyumqYxf/5cfvf7P/L1b3yHuXNmUVBQcJHmCwKKEqGsrGxogLuYeDkNrFLKC6AiQGiEzzTtbxV5Tord1n7tb73Hs258OndbpZEHCgs6wY8ibQqaJAhEIioLi9JwymJCZWJSuBw6gROIAbyLjiaCABZRYHqWg+lZDm6bnkNI1Xj1XCd/qGrkz1VNaBEFwSKNOsgJAigRla6AMqrvEUUdsJcsWcg/nn8x6XHJksS583V9mMaRgsLw5kzk3t/ex8GD1SxYMI8J48eTmZkxAKBd9K7TQS2FmzzJcbpcLjweD42NjViSsIVqmkYoHOJyb1EHio4OjtTUGB6HakLrOX/e3Ojf8+bOYe/eqoTn1uv1smv3XkpKiqMZkU0G9eqrNrNt2w78/p64PJ8DqoQtFpqaW9i7r4oVy5exc9duOju9pKUNzRCqqorVauG6666Om4/+5sjr7eb3991PKBTm1Kkz1NQcjTtTkijS7fOzedP6oQHORMWZuU5yM2w0dwRHZLcaLUKHorG8JF2vjzZAQuLY8czOc5GTbqOl8/Ibj0kFVxrxfJo25nSlF+ARF3MRC3oAVlFgw7gMNozL4INzC3nvozWcH6uSPVoMgzFq+0tEEKCwoIDsrCzaWtuQLXLC6Z4kSaKlpY1AIKCnlkpBdzMzMpL2LjSzSoDAa6+/yetvvEV6uof8vDyKS4opLS6mtKyE4qIiPJ60OAJzKRIN9+77cALmBUFIynZ3qQFu//4DdHZ2JaiejJCbk8306VOj38+eVYnHkxatEJGIVL9n7z62XHsVoihFn62qKhnp6axft4YHH3pET8SciCoc2L17LytX6ACXyDnRHWW6WbduDePKygZNcQfgdDn56Ic/QFdXV3RtYx1RzLysEyaMT0CCM1QsHovEzDwXL7f0jMhuNUo0DkSBJSVpJDqedIvEvEI3z7f6ES2WlKgWU6a61TSwStF6dokIb2b/x0LS6w16mjGnqgprSj088e6ZLP3VXsKGXU8bg/6MOgMF2Gw2srMzaWpqwmJNXIqQJAmfz0d3d3c0d+JIiWFubg45Odk0NjYlJdGYzWUY6Ht6Ahw/cZKao7Vomu55mJ6eRmFhAdOnTWXmzBlMnjQxJm5OS1kquoTUu4YdprWlhba2tqTCIswMHZmZmSR8kC61enL3noRr2wWDQaZXLIyqIwVBICcnm0kTJ1B1YGg1pQlw586d5+TJU0yePOliuSVDitu4YR2vvPo6nZ1dQ869qfY8dfoMr7z6OnV19diGcMoSBDOkxs2Wa66Km4sBz5MosnTJosSk1IQ2mWaqKT26p+Bltk9URcPqtLCoMDGHDHM8V4xLB5XLKpOHIIAWUSnItDPLqGeXSPybJAg6uGl6he+x9GoUjPdbJIGwqjE3x8kVkzJRg5ExJYajTWgB3R6RpNRkEqNunz/63YgYICNbSuXMGQSDoWFJVqZDjSRJ2Gw23G43aWlubDYrPp+fI0eO8tDDj/LNb/0Pd3/jO7z8yqtEIvp6pjr1mNmX/j4msX3yqWcJBoNJjVVVdQKeluYeE0ZopNJbU1Mzx4+fxGazJZivkTj1pKktmTt3TsJZbXTnozA7du3u872maTidTq6+anPCOSpFUcTv9/PAnx9M0PlJdwRav241ubk5CTtxmfNTXX2Y+/74AN//4U/435/cwxNPPkNbW3v0nMiJEl1Ad8G/zNR5ekB0hMmFbso9NiMhsZDQeFaXpQ/bsWU0x6OENWblu3AbQe9iAoUEnz7VjscqsbLYE1XPmqEAguFEMhYH3HxHtsMC2ugSFb2uIFjlsVOd6YUak+fOVVXtE0g+Um5/3drVvPzKa9F0TsMBTvOe2HslSUKW5ai24/iJkxypOcpLL7/Gv7znNqZMmZxSlaXL5RzwWe3t7Tz+xNO89sZb0awWic5RJBImOzuX7KyshCSDSw1we/ftx+v1kpaWlpD3ZH5+HjOMLP5CzPmeM3smHo+bSERJSE1ps1mpqjrIrTffGA2DiQ3+vmLVCra+9Cr19fUJh8kk6tkbDofJzc3mys0bEw5WN+3Df7jvfp559nlCoRAOhx1FVdn60is88+xzfPyjH2TWrMrEAM6MH5uV58LltuLriaS0AOrIAEGvILC81IMk6NKLPITUYAJGZa6T/Aw7je09CDE16S6pBGdQ7uVGPJ+qDS6RqoYDys93XeDZqkaWTM3m5mk5XD0pi2lZjjhbpKJedBQRSW3CZQ197i2iQHtI4aUT7QgWadRUv0JUxSKT55S53Fsqs/Cb8UqFhQVcf9213P/AX8nIzEBJUd2y3umxbDYbDoeDM2fO8u3vfp8PffD9LF+2JCUgp2kaW196NRpsbDIDHR0dnD1Xx4kTJ+no6MTpdCQdZB8Khxk/vlyvVH4ZNxNIdu/Zl1B8oakRmDmjAofDHl0H3ftZIycnh4kTJnDg4KGE1JQWi1FhoOYos2dVxgGc7vxh5dprNvPze36d0tRhoiAQCAS4+abro6A+1H4yr3nm2ef4+6NPMG/ebNauWc24slLCkQhHjtTwxJPP8JOf/oK7774rcQlO06DIZWFKtpN9pzsQpcvIDifCkmJPUsRR0TTSDDvcs00+xFEkxkmpa4x6ditL++bTHKxlWHX3/O0nO9he28adLgvzi9JYOz6DteMzWVGchq0fpIytE2c6yQmxSc6E/tFMM0q6ajHhBBZRwBtRufmRIzS29yDa5dErZ2Mku87JsFDgshoQ+39DHZoMyF17zZU0NTfzj+deIDMjI059k0pwVhQFu92Ooij84pe/weVyMmf2rBG/SxRFHn/i6X6fI0l6SZREgoQH2iLz5865rNfRtGnW1V3g5MlTCasnRVFiwYJ50TnsLcUtWDCPfVUHEgZYRVHYvXsvs2dV9lkfTdNYsngRz7/wEqdOnU4JyAmCQDAUoniAhMoD7UNRFOkJBHj6meeYO3c2//Wfn4/LxDNp4gTmzJnFl+/6Bo8//hQJs75mZpB5hW72nWgfUfxYKpuiaoi25BMSm56Jy0s9PLu/8bIgjYKg2xPT3FZm5MbXs0tkfTTAapNRrRrhiMb2E+1sr23j21aRiXkuFhalsaTEw7wCF1OynOQ7ZN1uJyRPOaJHyfinK6zwj5MdfPv1s1Sd6UB0WEa1VpuIgKJoTMh04JJFPdmy+M8DcLGc//ve+x4kUeSFF19ClCQchiNLqguPmjY7SZL4818eYtrUKSkhdi6XM6WS70XVVy6VlTMuedHSoXUfAvurDtDTExjSpd4MqM7MzKCosJBAIBitLnFR3SlSUlKM3WZPOCjeZtMrDJievrFzZnoCb968gZ/97JcpiXMVRZFgMMimjeujoD6U9GaysE2NTXR0dPLhD74/WnHdDGNQVZXSkhIWLphL9eEaktbtrCxN57fiucuDizVSZZXnu5iW5YhugETBBGDNZWSHE7kYz5drl6P2tWQlwIjhCCTaZCN7i8aJRh8n6rz8ddcFsEh43BbK0+1MzLQzIcvB5Aw7+WlWil1WXDaJXIcFWRT6qHs1NPxhlQZfmAveEIdbfOy60M1b5zo53+wHQRh1cIuun6pFPU2VESRbTlaaGS4YiSl2Vzf3uiRJvO//3UFl5UyefOoZjh8/EfWQk2U5jlBpKagKbbfbOXv2PK++/gabNqxHUZQRqSpTLXGKokhPT4D3vPtdOByOaNqoy5lJ2bPXUE8OsT6xTkvf/u73Bp1TWZYStpdZLBYaG5upPnyE+fPmxgFcVIpbtJAXpm7l2PGTOEZQYVwwVJPjxpWxatWKQYO6+0glxthFUSQnJzvOEcmcS1VV8Xg8BIPBxAHOpHPzC10IdpnIZVBTRRQE1IjK4mIPVjG5hMRxdrh0G40dgUtuhzPj+VaWDh3PlwhfqMRkRBYtIqJViqpFunxhDnQFOXC64yJrJArRagLpVglJEvrMp6ZBMKLiDUQgrILprWUREW1y9Pmjr8oFLAIbjewq4hgQIkCvXCwl9zYzZVcqQgQGe8f8eXOYN282B6oO8da2HdQcraWtrd3gcMVoMcjY7OzDATwzKHfbtp1sWLf2ksbH9W6yLNPZ2cmCBfNYt3Z14sTzkqgndeJ89uw5Tp8+i82WWOVuU6XY1t4xqPIl2fg/DY2dO/cwf97cfoOsRVHkui3X8L3v/5iRxP+YUuh1W67GZsRyJiKYmNdkZKQDGvurDlJWVhon5ZtjPnHyFDk52YkDnPnwSRkOxmU6OJ3ixMsjaWa+xmS6YnqIpVkk5hWl8WxzD6JFuKR2uETyaY4EEGIPjyAJCJIu4Qkx71c1DU3R6PSHB55QAwxFq4goSFHJcaykYFEALaxQkutixSjl6hzoULa1tSFLiWdpMYmR2+0m3ZOWlJYh2f6ZBHP27Epmz66k2+fj9Kkz1B47zsmTp2hobKStrR2/vwcNDavFErVfJAN0Jsd/4UI9ra2t5ObmXhaSkCiKdHZ2MmH8eD78wfe9bVTNu/fspaenZ0jvyd7jtQwhlSa7pnabjerDFxOD9yfFzZ5VyazKmRw4WI3T6Uha+jal66lTJrNk8aKkGBBTQsvNzaWiYjoPPfwIeXk5LF60MPqMnp4eHnv8KQ4dOswnP/7hJAAO3d5llwTmF7o5neLEy8Npei5LieUlnmERDtNDcc24jEtuhzPzadrdVhYY+TRHM2hbMxxF+gMxQRgaMXQw5JKsvygIRMIqt8/MwymJRFRtlOdKH2NLSyutrckFGyPoBTg9nrSLSWFHqau9i5i6XS5mzqxg5swKAILBII2NTZw7d54Tp05RW3ucc+fOo2lgs1mTIoimsb+pueWSAVxsTsxQKEQgEGThwnl86IPvx5OWllQy6kuigTIybuzdV5VUlYrhAFiiWoa2tnb2Vx1g1crl/VbSFgSBG2/YQvXhI8N+v6apXHfdNf0mVE503W+/7Ra+/Z3v8f0f/oSZMyrIy80lokQ4ZTB0G9evZdWqFcnZ4MzhLCv18Mju+ku7OQz7W2muk4ps57C4+Kgdblw62Echz2aSi6ZFFCpynZS4rVF3/ksiSSYrDo8xI6BGVJzpNj4xv9CIexxtRkpFliT27a+iu7tbT1uUKKeNQERRKC4ujNqBUtVdE8h6c8D9qSAFQcBms1FWVkpZWSnLly9FURWO1hzjwYcf4dSpM0mBnCAIKJEIHR2dKQWqRImxqmpEIuFoVYWS4mI2b97A2jVXxBHjVJ3NVEveprR96tRpzp47P2TGj7EE3V2797Bq5fI+4zWluEmTJrJo4XzefGtHwtUdzPt9fj/z5s5h9qxKw4NUTJ5OahoTJ4znv+78PH998GFqa49z8GA1oiSSk53F+977HiP1mJgcwAnRAqh64mX1EgMCEZWFhWnYJWFYCYlNO9yMbAfFmQ7qWvwIlktjhxMND8oFRWm6/S2BeL5/xiZJApGeMJ9fP55xbmvU7jpS4mDq8furLC1LEl6vl+ef36pnRk+W01Y1Jk6YMGoSWyzYxYJFb+DoHdQtCRIVFdP4zKc/yV1f+QY+n2/IpLqpliLMTBqRSCRBu46GJMvYrFaysnIYN66MeXNnM3/eXN2j01AvpAyMDAl8oFJKic7RQPawnbv2EA6FsacwvmwkoGuz2Th69BjNzS3k5uYMKMVdddVm9uzdn3QuVFmSuPqqTTGstDCsPQMwccJ4vnTnF2hsaqKpsRmrzUpJcVE0DR2QHMCZgDAr13nJExULxvwsNu1vw5grMx7OIYssLHJT19CNZJWIXIIBmfk0rzASLL/T+gE3USDSE2F6eQZfXGyU90gBE2DalMyyLb1bc3Mzv/zVb2lpbU0qm4ZJNFwuJzNnVKSUuQuHw7z44stMnDSBSRMnDFoNYMC+aSqiIJKRno7DYaery5uUY4IgiiNynDELXC5fupjFixYODSCCziy43C4yMzLIzMzEarX0kYpSpfpQVRWH3c6hQ4f58lfuHhY9FoCIouJ2u/iPT38Sl8sVtTuFw2Gqqg4mrZ5MFryTebZkMHN79u5j86YNfQDO/P+83Fzcbjfd3d0JM0VmOEKWkRt0uExIOBzmj/f/hcULFzBzZgX5eXnk5+XFrduf7v8LdrstSQmOi44ZcwvcvNDag2iRL4ljhml/W5FkQHTfSdcHdsW4DB7b23DJ1G6KoiE5ZRYNUc/un7WJgoAWUbE7ZP58wzQckhgt0poKcDt37jyHj9Sgqaoe6iAIdHZ2UXvsODt27qary5s0uOl5+XqYVTmDoqJCFEVJWWb7QCDII48+RigUZty4MiqmT2PKlEmMG1dGVmZm1HV6qNbd3c3DjzxGQ0NjUjFtZoaL3NzsEQA1RMJhysvHMW/enBGpafurYZcqZsKsZj7cMSqKHrIRDAZxuVzReMLa2mNcqK+Pxp0l2iJJZKxJdl5MW9zuPfvYtHH9gHtIUZRhp4YbqrbcYPcKgsCFC/U88eQzVBq2ZaVXgVdRFGlpaeHY8ZPJx8GZjhmLi9N44WDTJXHMMBMS52c6mGUGRA8TEEwB4IqydLDLl8QOZxY4nZSfRnm6/ZLa3y5XcENVUVWN+2+pYE6OM2U18lRNw263s29/Fbv37IvK06b3o2b8bqZESv5QqqxbuzpKjFMFcIIg4Ha78Xq7OXvuPMePn0SSRNLS3GRlZZGXm0tObg65Odk4HQ5ki0xWVhZ+nx+v10uX18vZs+c4WnuclpYWHA57Uva3SCRCZkYGebl5KQEQVVVRFBVJStyjDoQxCQEwK5qPBOBsNmsfsNi5a0+0+nYyYKG7ySeiz9Ul/Z6enqSq0NtsNk6ePMW583WUlZb0a88ciQp4uPea/QgEgqS53RQWFKCqWhyIm2c2Pz+fmtrjyQOc2bWlJR6QL02YgJ6QWGVegRu3LCYV/zbQZE/PclCWaedss3/Mwx9EQUBVVJaVpCEL79jfeqsllbCKIMC9N0/npklZKZ8fU4qzWPrfG8PJpqG7Q/cwfdpU5s6dPSrxWKqq6gTJasVmEOBQKMz583WcPn02RrrR/2ORZRRFRVEVPRG2KGCzWofMV9jfmQkGg1TMmI7DYR9xILVJoDSNyzZmbST2sd7qYkmS8Pt7OHDwUMK2NzNL/7y5s/nYRz+sE3tRGPSdoiDQ5e3mG9/8Dj6fP2FVol5d28euXXsoKy2J5ru91M08j2lpbiKRCDW1xygtLUFR1OhZMDUXJ0+dJisjI/n4WFNSmpfvwuW2oCrqmEsbpv1tmaGe1Eb4LDP8YVFxGkTUS6YeXF76jv0tlvOVRQGlJ0y6Q+bROyr5wMy8UQN/kwjFfkzHgmSJm+n+LMsyd9xxWwzRHp19FdtXU9pwuZykpeklcNxuN26XC6vVitPpIM0ojeN2uZBlOWnwNrOkbFi/ZsTc/D9rO1JTQ1NTS1K1/BRFYc7sWTgcdpxOBw67fcCP0+HAbreTl5vDlMmTCAaDSUlxVquVvfv262r1y4TpMCXdgoJ8Jk4cz4MPPkxNzVEkSUIUxah25Kmnn2V/1QGWL18yDAlO0CegwGlhWq6TPSfHPvGynsUiJiHxSAmE8e/a8gz+trt+zD3kFVVDsMssfMf+Fk3cHImoREIRlk/J4tfXTqUi0/62kGxNz0Wv18uHPvh+yseNi3GeGJudNZiDyUg99WRZpr29g2uu2WxUX9beAbhhtB07dye1H1RVxelyMnXa1Oj6DjXv5r6rrJzJtu07k2Zgzp07z/ETJ5ma4vJII93boihy68038u3vfp9vf/d7zJs7h/LycoLBIDU1R9mzbz+LFy5g44Z1DEuvoGggC3oG/z3Hxjbxsl4eRyU7w86cPMP+NkKiZwLKFWXpiI6xtcPp9ewUxsfl0xzevLyd6Yxo1KyLKCoRXwRPuo3/2jSRzy0uRsJI9n2Zg5skSYTDYQKBILe962bWrV192RCGVDRZluno6KSycgbvuuWmaJLfyzSO+rJr5jx1dXk5fLgmicKmAsFgiPLyMgoL8hOOGzTVdTMqphtqPSVhZkQUBMLhCDt37mbqlMmXD50wM6rMruTzn/sUDz70CG++tYNXXn0DBEhzu9m8aQP/csft2O12RpSBdHmph5+LYxsmoMe/KcwpcJFuZFIZqcRj3j450874bCcnGrrHzA5nAvaCQnfS+TRjmy+sokVUBIgCgWqWtblMCZAJaqoGalhBDau4PFb+ZVExn1tawkSjgK2qcVnYAAbaj/oYNLzebtLS3Lz/fXewcsXyUQe3sZCcdPuYgKKotHd0MH/eHD72kQ/FFcbU3kG4BDVPOphVHThAW1sbbrc7sdI4RljItKlTomWSEtlXF1Nb5VA+bhyHj9Qk7AmsGs4mVQcOcmvwxsuqpp45rgXz5zF79ixOHD+Bz+9HEAQKCwooLCyISnvy8AiTfrAWFLiRnTKakSppLLa5ZLCMi4sTKwiaqFpMMYp1LilO43SdF8kmjklCadEgkCuN+LfhvnFpWTpvneqgNahAMHIRQSQRQdKJVFTQ1kA10nSNFWky/ByiNasUTUMNq6gRFUSB8fkubpuZx7/OyWdSuh5bZYJ9MnTc5G6TzY4xHFDRNI1wOEwwFMJus7Fs6WJuvuk6CgoKBiVCyfaxv2v1d0diHDS0IdWTyc4h6C7pPl8Al8vFrTffyA3XXxt9X3+edSMd12gTxrF/Z8y+N965d2+VIV0lxqRogCxLw4qlNNepsnImBw9VJzV2m9VCQ0MTR2qORmv/9Y6JS3YuU5ldRlVVLLLMtGlTB7xGHu6iAYxPt1GQZuN8nRes4phQy5AggKKxKkX2t9hNBLCmPIMHXj+LIgmMhQgXMt6+tGR48XymtHfn4mI+MreA2lY/u+u72VvfzYEmHyfbA7R3h1ACkWi5CUN0in7E2Ppu0bnQ4pYzEZopxJSIi32eqmloqp7EGUXVX2AVKc12sH5CJjdMy2HtuHRcshgFNkEQhiXJhsMRIpFINPtE6tRLejJpVVFQFDWarDjPqDm2csUyJkwYr493CA47EolE+6kkVNxSjI7J7IvFYiEnJ4sTJ06jaT3RbBmSJBtGd2GYKbBUwuGLKbCyMjNZsXwpmzdtoKioMI5ojnTuNU2M3jMWzexbqvfGUGdCUfT5slqstLd3cODgIWRZJhQKJ0TI9VymHiZOHD9skJg5YzqSJBnvTIyu6cHoId58aztzZs/qs1fCYT0DTbJMVcoqghuMlvk8Mwxn7779/PXBv7F29RXDBDguFkD96IJCHrdKyDYpWjllNDeLqqhkptlYUmRkkU+RXcZUgW2ekMGq2fkEggrCKKtfBUM9WZBpp8Kwv4nDjhGBLKvEksI0lhSmRb9vC0Y43RnkaFsPR5r9HG3xc7YzyFlvkM6eCL6goktRvcFcjC1oaoDhANW9TdFQUzQdGFXMbM4YOlNcdplx6XYqcp0sKk5jaYmHufmuKKiBHh4hDhPYzJaTk0V6ugeX05kyIiYIArIkY7VZSU/3kJ2dTUlxEePLxzFuXFlUfWMetIElN/3fzMxMMjMzEs7jJ4qiHsdmZIDQY/Ns3Pmfn+fcufOcP1/HufN1NDQ00traRldXF8FgsB9C3s8a9nJft9vt5OflMa68jOnTpjKrcgYZMZXCBwsgj859gpV1Ta838/mjLVRlZGSQkZGO2+UaQ4ATUCIqDqcdu8POwQOHkCSJ9HRPwnPk9/ewcMG8aBaUZADO3IulpSVUVs7gzJmzWK02NC0x25/T6aCxsZFAMBgX0mCxyOTkZNPRISdYd06IMmbDjSkcStugGX/XXahnz979lJWVImjvKNDfae+0d1p8O9AZoOKe3YQjunFRSxlx1DNZOO0ytR9fQLHb2icw0uzDGW+Iqffs0qtjD6MPggBaSGVakZvJ2U6erGpEsg8fAARDSpFlgZqPL2Biuj3a1959P94ZoOKe3YQjWsoouiQKKD1hNlfm8eytM1CNLB+SIPB6nZdV9+5FlEfoR59gk1PxEE01Cs+p2juf/wsfszL3O5//e5+U0YAoLdRSSg8SbHFRYuUyeixhSlSXKX3+kNe/DT79rWEC64uWSMYUSA3+lbUeSp0WYt09Rot51wxHmb+f7ODEsdaon+ilaGYA6bLxGSzMdxFR9RCC/i2Nmp6kdEcdVefG0BdyEO1FKlIcvbP4hmpuTGN9SnaDoscXvXtqNu+dnjuk44QGKMkGMY+jjcTdva/98A0/PJfCEadZ5emQXWFq5Iaqe1WGVJZG1zJmZ8XI0pk8+X8B7QcWfXhecoIAAAAASUVORK5CYII=" />
   </div>
-</header>
+  <div class="app-title" style="font-size:11px;letter-spacing:2px;margin-top:2px;color:var(--ltblue)">WholeSale Tradeshow Displays</div>
+  <div class="app-title">MACHINE MAINTENANCE</div>
 
-<main>
-  <div id="gate">
-    <div class="logo">🛠️</div>
-    <h2>Machine Maintenance Tracker</h2>
-    <p>Sign in with your <b>wsdisplay.com</b> Google account to view machines and log maintenance.</p>
-    <button class="btn-google" onclick="signIn()">
-      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.5l6.7-6.7C35.6 2.4 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.8 6.1C12.3 13.2 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"/><path fill="#FBBC05" d="M10.4 28.7c-.5-1.5-.8-3-.8-4.7s.3-3.2.8-4.7l-7.8-6.1C.9 16.5 0 20.1 0 24s.9 7.5 2.6 10.8l7.8-6.1z"/><path fill="#34A853" d="M24 48c6.2 0 11.4-2 15.2-5.6l-7.5-5.8c-2.1 1.4-4.8 2.2-7.7 2.2-6.3 0-11.7-3.7-13.6-9l-7.8 6.1C6.5 42.6 14.6 48 24 48z"/></svg>
-      Sign in with Google
-    </button>
-    <div id="gateError"></div>
-  </div>
+  <div class="nav-label">Overview</div>
+  <div class="nav-item" data-view="dash"><span class="ico">▦</span> Dashboard</div>
 
-  <div id="app" style="display:none">
-    <div class="toolbar">
-      <div class="tabs" id="tabs"></div>
-      <input type="search" id="search" placeholder="Search machines…" oninput="render()">
+  <div class="nav-label loc">Locations</div>
+  <div class="nav-item" data-view="CA"><span class="ico">🖨</span> CA — California</div>
+  <div class="nav-item" data-view="PA"><span class="ico">🖨</span> PA — Pennsylvania</div>
+  <div class="nav-item" data-view="MX"><span class="ico">🖨</span> MX — Mexico</div>
+
+  <div class="nav-label">System</div>
+  <div class="nav-item" data-view="guide"><span class="ico">🗎</span> Documentation</div>
+
+  <div class="side-foot">
+    <div class="user-card" id="userCard">
+      <div class="role">Not signed in</div>
+      <div>Sign in to log maintenance</div>
     </div>
-    <div class="grid" id="grid"></div>
+    <button class="signout" id="authBtn" onclick="handleAuthClick()">Sign in with Google</button>
   </div>
-  <div id="loading">Loading machines…</div>
+</aside>
+
+<main class="main">
+  <div class="topbar">
+    <h1 id="pageTitle">Dashboard</h1>
+    <div class="sub" id="pageSub"></div>
+    <div class="sub" id="syncStatus" style="color:#1e9e4a"></div>
+  </div>
+  <div class="content" id="content"></div>
 </main>
 
-<!-- Log maintenance modal -->
-<div class="overlay" id="logOverlay">
+<div class="modal-bg" id="logModal">
   <div class="modal">
-    <h3 id="logTitle">Log Maintenance</h3>
-    <div class="sub" id="logSub"></div>
-    <div class="field"><label>Date performed</label><input type="date" id="fDate"></div>
-    <div class="field"><label>Type</label>
-      <select id="fType">
-        <option>Daily</option><option>Weekly</option><option>Monthly</option>
-        <option>Quarterly</option><option>Semi-Annual</option><option>Annual</option>
-        <option>Repair</option><option>Inspection</option><option>Other</option>
-      </select>
-    </div>
-    <div class="field"><label>Task / work performed</label><input type="text" id="fTask" placeholder="e.g. Printhead cleaning, belt inspection"></div>
-    <div class="field"><label>Notes (optional)</label><textarea id="fNotes" placeholder="Parts used, issues found, follow-ups…"></textarea></div>
-    <div class="foot">
-      <button class="btn btn-ghost" onclick="closeModal('logOverlay')">Cancel</button>
-      <button class="btn btn-primary" id="saveBtn" onclick="saveLog()">Save entry</button>
-    </div>
+    <h3>Filter / Head Change Log</h3>
+    <p>Log <b>every</b> filter and head change on the machine&rsquo;s Filter/Head Change Log (Google Sheet). Record:</p>
+    <ul>
+      <li>Date, and filter or head changed (part + location, e.g. C1, YM4)</li>
+      <li>Circulation pressure — <b>before / after</b></li>
+      <li>Circulation pump frequency — <b>before / after</b> (Durst normal: 4.5–6.5 pressure, 65–110 pump freq)</li>
+      <li>Printed sq ft (or sq m) at time of change</li>
+      <li>Ink consumption (L) for the color changed</li>
+      <li>Technician name + notes</li>
+    </ul>
+    <p style="font-size:12px;color:#8a6d00">P5-Tex parts: carriage filter JKP 5µm PP (Durst P/N 1392545) · main ink tank filter MKL 5µm PP BLK (P/N 1392994). Values are found under Ink Heater (pressure/frequency) and Ink Cost (output, consumption) — never press Reset.</p>
+    <button class="close" onclick="document.getElementById('logModal').classList.remove('show')">Close</button>
   </div>
 </div>
 
-<!-- History modal -->
-<div class="overlay" id="histOverlay">
-  <div class="modal" style="max-width:680px">
-    <h3 id="histTitle">History</h3>
-    <div class="sub" id="histSub"></div>
-    <div id="histBody"></div>
-    <div class="foot"><button class="btn btn-ghost" onclick="closeModal('histOverlay')">Close</button></div>
-  </div>
-</div>
-
-<div class="toast" id="toast"></div>
-
-<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
-/* ================= CONFIG ================= */
+/* ============ CONFIG — fill in after Google Cloud + Sheet setup (see GITHUB_SETUP.md) ============ */
 const CONFIG = {
   CLIENT_ID: "919263581465-0g7m20g0j2b9g6e1njsm9b9kmaspsf4e.apps.googleusercontent.com",
-  SHEET_ID: "1cOfwaLcLIwUw9iNITbcII4d032_1uHPuUY3gVLJLgeM",
-  LOG_TAB: "MaintenanceLog",
-  ALLOWED_DOMAIN: "wsdisplay.com" // set to "" to allow any Google account
+  SPREADSHEET_ID: "1XSwBK8CyWAdOgR6cj9k-lF3pkBuDaeZTYwhDX2TeBBo",
+  LOG_SHEET: "Log"
 };
-/* ========================================== */
 
-const LOG_HEADER = ["Logged At", "Date Performed", "Machine", "Type", "Task", "Performed By", "Notes"];
-let tokenClient = null, accessToken = null, user = null;
-let machines = [], logRows = [], machinesTab = null, activeLoc = "All";
+/* ================= DATA ================= */
+const CHIPS = {
+  shift:["Every Shift","c-shift"], daily:["Daily","c-daily"], d2:["Every 2 Days","c-2day"],
+  week:["Weekly","c-week"], wd3:["Every 3 Working Days","c-daily"], wd15:["Every 15 Working Days","c-15wd"],
+  month:["Monthly","c-month"], wd45:["Every 45 Working Days","c-45wd"], qtr:["Quarterly","c-qtr"],
+  half:["Half-Yearly","c-half"], year:["Yearly","c-year"], use:["Usage-Based","c-use"], req:["As Required","c-req"],
+  purge:["After Purge Cycle","c-req"]
+};
 
-function $(id){ return document.getElementById(id); }
-function toast(msg){ const t=$("toast"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"), 2600); }
+const T = {}; // task templates
 
-/* ---------- Auth ---------- */
-function signIn(){
-  $("gateError").textContent = "";
-  if (CONFIG.CLIENT_ID.startsWith("YOUR_")) {
-    $("gateError").textContent = "App not configured yet: Google OAuth Client ID is missing.";
-    return;
-  }
-  if (!tokenClient) {
-    tokenClient = google.accounts.oauth2.initTokenClient({
-      client_id: CONFIG.CLIENT_ID,
-      scope: "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile",
-      hd: CONFIG.ALLOWED_DOMAIN || undefined,
-      callback: onToken
-    });
-  }
-  tokenClient.requestAccessToken({ prompt: accessToken ? "" : "select_account" });
-}
+T.rhotex = [
+ ["Start cleaning cycle / wipe heads gently with distilled water","shift"],
+ ["Clean rollers + dancer between loading each roll of paper (wipe + water)","shift"],
+ ["Check motorized stretch/spreading rolls between loading each roll; clean if necessary (wipe + water)","shift"],
+ ["Check and empty both waste ink tanks as needed","shift"],
+ ["Clean machine and surrounding area","shift"],
+ ["Check crash sensors for contamination or overspray; clean if necessary","daily"],
+ ["Check cleaning station (left) and capping station (right); clean if necessary (wipe + distilled water)","daily"],
+ ["Check waste container (mesh tray and capping station); empty if necessary","daily"],
+ ["Check and clean carriage sledge from below with distilled water","daily"],
+ ["Check the spitting pad; clean or change if necessary","daily"],
+ ["Oil linear carriage bearing guide","week"],
+ ["Check transport rollers; clean if necessary (water / soapy water)","week"],
+ ["Clean interior of the machine free from dust","week"],
+ ["Print Nozzle Check on paper and file with name / date","week"],
+ ["Check jar and filter on the ink suction wand; empty/replace if necessary","week"],
+ ["Check chiller water level and cooling fins; clean if necessary (switch off unit when cleaning!)","week"],
+ ["Supervisor: confirm weekly that the maintenance log is completed and initialed (TPM SOP)","week"],
+ ["Clean encoder ruler and check for scratches or other damage","month"],
+ ["Check the chiller air filter; clean as needed","month"],
+ ["Check ink level in on-board vacuum; empty if necessary","month"],
+ ["Quarterly basic cleaning (exterior/interior, top and underside)","qtr"],
+ ["Replace lubrication plates on the print head carriage","half"],
+ ["Lubricate print head carriage bushings","half","Every 108,000 sq ft OR every 6 months, whichever first"],
+ ["Change cooling system (chiller) water","half"],
+ ["6-month Durst service checklist (print quality, carriage, capping station, purge unit, media transport, ink system, cooling unit, workstation, safety devices)","half"],
+ ["Yearly Durst service checklist (6-month items + grease carriage rail & head-media-distance bearings, grease transport motor bearing, vaseline cable chain, replace main ink filters, replace cooling liquid)","year"],
+ ["Grease transport motor","use","At 13,000 hours of operation"],
+ ["Perform a cleaning cycle + wet wipe prior to standby","req"],
+ ["Check electrical system of the cooling system (specialist)","req"],
+ ["After printing direct to textile: check absorbent pads and clean mesh tray","req"],
+ ["Log every filter or head change on the Filter/Head Change Log","req","Click + Log for what to record"]
+];
 
-async function onToken(resp){
-  if (resp.error) { $("gateError").textContent = "Sign-in failed: " + resp.error; return; }
-  accessToken = resp.access_token;
-  const r = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", { headers: { Authorization: "Bearer " + accessToken }});
-  user = await r.json();
-  if (CONFIG.ALLOWED_DOMAIN && !(user.email || "").toLowerCase().endsWith("@" + CONFIG.ALLOWED_DOMAIN)) {
-    accessToken = null;
-    $("gateError").textContent = "Access restricted to @" + CONFIG.ALLOWED_DOMAIN + " accounts. You signed in as " + user.email + ".";
-    return;
-  }
-  $("userpic").src = user.picture || "";
-  $("username").textContent = user.name || user.email;
-  $("userbox").style.display = "flex";
-  $("gate").style.display = "none";
-  $("loading").style.display = "block";
-  try {
-    await loadAll();
-    $("loading").style.display = "none";
-    $("app").style.display = "block";
-    render();
-  } catch (e) {
-    $("loading").style.display = "none";
-    $("gate").style.display = "flex";
-    $("gateError").textContent = "Could not load the spreadsheet: " + e.message;
-  }
-}
+T.p5350 = [
+ ["Carry out print head maintenance","daily","At start of shift"],
+ ["Check printing plate for soiling; clean if necessary","daily"],
+ ["Check glass of UV LED units for soiling; clean if necessary","daily"],
+ ["Check conveyor belt, dancing rollers and redirection rolls of feed table; clean if necessary","d2"],
+ ["Check aerosol extraction air filter; clean if necessary","d2"],
+ ["Check carriage guide acoustically and visually; lubricate","week"],
+ ["Check water level of the cooling system","week"],
+ ["Check air filter of the cooling system; clean if necessary","week"],
+ ["Check main tank ventilation (de-air) filters; clean/replace if necessary","week"],
+ ["Document print head condition; print nozzle test, label with date/time/system # and archive","week","Keep test images — warranty claims require them"],
+ ["Check air filters of UV LED units; clean/replace if necessary","week"],
+ ["Check conveyor belt for soiling; clean if necessary","month"],
+ ["Check encoder ruler; clean if necessary","month"],
+ ["Maintenance on ionizer","month"],
+ ["Replace lubrication plates of print carriage bearings (P5 210/350 only)","month"],
+ ["Create backup of the workstation","half"],
+ ["Clean ventilation of the workstation","half"],
+ ["Lubricate print carriage bearing","use","Every 10,000 m² (107,639 sq ft) printed — Durst grease P/N 4290014"],
+ ["Refill ink","req"],
+ ["Clean housing of the printer","req"],
+ ["Empty catch tank","req"],
+ ["Log every filter or head change on the Filter/Head Change Log","req","Click + Log for what to record"]
+];
 
-function signOut(){
-  if (accessToken) google.accounts.oauth2.revoke(accessToken, ()=>{});
-  accessToken = null; user = null;
-  $("userbox").style.display = "none";
-  $("app").style.display = "none";
-  $("gate").style.display = "flex";
-}
+T.p5tex = [
+ ["Wipe print heads with a wet cloth","purge","After every purge cycle"],
+ ["Carry out print head maintenance","daily","At start of shift"],
+ ["Check tensioning rolls for soiling; clean if necessary","daily"],
+ ["Check rollers for soiling; clean if necessary","daily"],
+ ["Check capping station","d2"],
+ ["Check protective plate for soiling; clean if necessary","d2"],
+ ["Check aerosol extraction air filter; clean if necessary","d2"],
+ ["Lubricate carriage guide","week"],
+ ["Check status of the coolant / cooler protectant","week"],
+ ["Check air filter of the cooling system; clean if necessary","week"],
+ ["Service capping station","week"],
+ ["Dryer: clean heating sign, redirection rollers + support rolls, empty catch trays, clean pyrometer protective glasses","week"],
+ ["Check de-air filters of main ink tanks; clean/replace if necessary","week"],
+ ["Check encoder ruler; clean if necessary","month"],
+ ["Lubricate seals and toothed rack at the dryer","half"],
+ ["Lubricate carriage bearing plates","use","Every 10,000 m² (107,639 sq ft) printed — Durst grease P/N 4290014"],
+ ["Refill ink","req"],
+ ["Check vacuum carrier on printing table for soiling; clean if necessary","req"],
+ ["Empty catch tank","req"],
+ ["Park print carriage on capping station ASAP after right-side maintenance (prevents nozzle dry-out)","req"],
+ ["Log every filter or head change on the Filter/Head Change Log","req","Carriage filter P/N 1392545 · main ink filter P/N 1392994 — click + Log"]
+];
 
-/* ---------- Sheets API ---------- */
-async function gapi(path, opts = {}){
-  const r = await fetch("https://sheets.googleapis.com/v4/spreadsheets/" + CONFIG.SHEET_ID + path, {
-    ...opts,
-    headers: { Authorization: "Bearer " + accessToken, "Content-Type": "application/json", ...(opts.headers||{}) }
-  });
-  if (r.status === 401) { toast("Session expired — sign in again"); signOut(); throw new Error("Session expired"); }
-  if (!r.ok) { const e = await r.json().catch(()=>({})); throw new Error(e.error?.message || r.statusText); }
-  return r.json();
-}
+T.monti91 = [
+ ["Grease bearing of the main printing roller","week","Assumes 8 working hours daily"],
+ ["Grease heated roller supports (left and right side)","week"],
+ ["Clean filters inside all grates (filtered-air flow to electrical box)","week"],
+ ["Clean resistance slip ring and brushes","week"],
+ ["Clean fans for side panel cooling","week"],
+ ["Clean and grease driving chains","month"],
+ ["Grease paper separator supports","month"],
+ ["Check tension of chains","qtr"],
+ ["Grease bearings and supports","qtr"],
+ ["Check greasing of felt guide, felt tightener and supplementary roller bearings","qtr"],
+ ["Replace the safety thermostat (manual p. 53)","use","Every 10,000 hours / 5 years"]
+];
 
-async function loadAll(){
-  const meta = await gapi("?fields=sheets.properties.title");
-  const tabs = meta.sheets.map(s => s.properties.title);
-  machinesTab = tabs[0];
+T.montiWS = [
+ ["Machine cleaning and general checks — clean under, above, around; report damage to Lead/Supervisor immediately","wd3"],
+ ["Safety checks — verify all safety switches and emergency stops function","wd3"],
+ ["Clean fans for side panel cooling","wd3"],
+ ["Grease heated roller supports (left and right side)","wd3"],
+ ["Clean electrical box grate filters (vacuum pad; cut new filters when vacuuming no longer removes dust)","wd3"],
+ ["Clean resistance slip ring and brushes","wd3"],
+ ["Charge batteries in emergency crank drill","wd15"],
+ ["Grease chains","wd15"],
+ ["Check chain tension","wd45"],
+ ["Grease bearings and supports","wd45"],
+ ["Replace the safety thermostat (manual p. 53)","use","Every 10,000 hours / 5 years"]
+];
 
-  if (!tabs.includes(CONFIG.LOG_TAB)) {
-    await gapi(":batchUpdate", { method: "POST", body: JSON.stringify({ requests: [{ addSheet: { properties: { title: CONFIG.LOG_TAB }}}] }) });
-    await gapi("/values/" + encodeURIComponent(CONFIG.LOG_TAB + "!A1") + ":append?valueInputOption=USER_ENTERED",
-      { method: "POST", body: JSON.stringify({ values: [LOG_HEADER] }) });
-  }
+T.monti902 = [
+ ["Machine cleaning and general checks","week"],
+ ["Safety checks — e-stops, hand-saving microcontacts, emergency stop handle, entry protection, air pressure on manometers, labels/signs, overall condition","week"],
+ ["FRL (air filter-regulator-lubricator) check","week"],
+ ["Clean filters inside grates of the lateral machine structure","week"],
+ ["Grease heated roller supports (left and right side)","week","Assumes 8 working hours daily"],
+ ["Clean electrical box grate filters","week"],
+ ["Clean resistance slip ring and brushes","week"],
+ ["Clean fans for side panel cooling","week"],
+ ["Check felt tightening pneumatic cylinders","month","Also whenever felt drawing is anomalous"],
+ ["Grease chains","month"],
+ ["Check tension of chains","qtr"],
+ ["Grease bearings and supports","qtr"],
+ ["Replace the safety thermostat (manual p. 56)","use","Every 10,000 hours / 5 years"]
+];
 
-  const mv = await gapi("/values/" + encodeURIComponent("'" + machinesTab + "'!A1:F200"));
-  machines = (mv.values || [])
-    .filter(row => row[0] && row[0].trim() && row[0].trim().toUpperCase() !== "NAME")
-    .map(row => {
-      const name = row[0].trim();
-      return {
-        name,
-        loc: name.includes(" - ") ? name.split(" - ")[0].trim() : "Other",
-        model: (row[1] || "").trim(),
-        serial: (row[2] || "").trim(),
-        vendor: (row[4] || "").trim()
-      };
-    });
+const LOCS = {
+ CA:{name:"CA-Printing", full:"California", machines:[
+   {n:"Durst Rhotex 325", s:"SER # AD28-042 · Sys # 142718", t:"rhotex"},
+   {n:"Durst P5-350", s:"SER # AK26-117 · Sys # 298127", t:"p5350"},
+   {n:"Durst P5-Tex", s:"SER # AE28-019 · Sys # 298155", t:"p5tex"},
+   {n:"Monti 1 (Heat Press)", s:"SER # 2016216", t:"montiWS"},
+   {n:"Monti 2 (Heat Press)", s:"SER # 2017445", t:"montiWS"},
+   {n:"Klieverick (GFC beltless)", s:"SER # 671", t:null},
+   {n:"Zund", s:"SER # G33XL320297", t:null}
+ ]},
+ PA:{name:"PA-Printing", full:"Pennsylvania", machines:[
+   {n:"Durst Rhotex 325-1", s:"SER # AD-28-031 · Sys # 105857", t:"rhotex"},
+   {n:"Durst Rhotex 325-2", s:"SER # AD28-069 · Sys # 202921", t:"rhotex"},
+   {n:"Durst P5-350", s:"SER # AK26-116 · Sys # 294130", t:"p5350"},
+   {n:"Durst P5-Tex", s:"Serial # to be added to machine list", t:"p5tex"},
+   {n:"Monti (Mod. 91-3600)", s:"SER # 2017370", t:"monti91"},
+   {n:"Monti 2 (Mod. 902-3600)", s:"SER # 2022314", t:"monti902"}
+ ]},
+ MX:{name:"MX-Printing", full:"Mexico", machines:[
+   {n:"Durst Rhotex 325-1", s:"SER # AD20-049 · Sys # 154652", t:"rhotex"},
+   {n:"Durst Rhotex 325-2", s:"SER # AD28-047 · Sys # 152619", t:"rhotex"},
+   {n:"Durst P5-350", s:"SER # AK26-118 · Sys # 298128", t:"p5350"},
+   {n:"Durst P5-Tex-1", s:"SER # AE28-020 · Sys # 298183", t:"p5tex"},
+   {n:"Durst P5-Tex-2", s:"SER # AE28-069 · Sys # 405629", t:"p5tex"},
+   {n:"Monti (Mod. 902-3600)", s:"SER # 2019197", t:"monti902"},
+   {n:"Monti 3 (Mod. 902-3600)", s:"SER # 2021393", t:"monti902"},
+   {n:"Monti 2 (Mod. 858-2200)", s:"SER # 2021144", t:null, flag:"No maintenance document exists for Model 858-2200 (confirmed) — nearest reference is the Monti 902 schedule"},
+   {n:"Vutek 3r (EFI)", s:"SER # 9870418", t:null},
+   {n:"Klieverik MX-2 (GTC111-3500)", s:"SER # 891", t:null},
+   {n:"Zund", s:"SER # G33XL320840", t:null}
+ ]}
+};
 
-  await loadLog();
-}
+const DOCS = [
+ ["Durst Rhotex 325",[
+  ["Maintenance Chart — GENERIC (S/D/W/M/H/R)","https://drive.google.com/file/d/153w5LfbWWxRUVa-aE3Ti-gQfcIhlfBjS/view"],
+  ["Maintenance Chart — CA Durst Rhotex 325","https://drive.google.com/file/d/1L4_kADQDWqE7n43Ehmy75odOYHMVetlc/view"],
+  ["Maintenance Chart — PA Durst Rhotex 325-1","https://drive.google.com/file/d/1PJ8l8PQIePIMBpttBYyk0HaLUQdGi6bT/view"],
+  ["Maintenance Chart — PA Durst Rhotex 325-2","https://drive.google.com/file/d/1IYTN8Pir5ZXGSJJYXw1SPD8yXF8PZCJj/view"],
+  ["Maintenance Chart — MX Durst Rhotex 325-1","https://drive.google.com/file/d/1zR1IGOYm2IzpB0LC9Pgn-wub2CbMniyg/view"],
+  ["Maintenance Chart — MX Durst Rhotex 325-2","https://drive.google.com/file/d/1_JV22b1Zg2tRS-TE3zD6512qVKNuyHkL/view"],
+  ["6-Month / Yearly Service Checklist (Durst)","https://drive.google.com/file/d/16BMYBknAZD1wa9J9czPD9fgsIdGb4uPL/view"],
+  ["Machine TPM SOP v1 (WS Display)","https://drive.google.com/file/d/16h7xzOOlSF-EEVJG8iHc_TUY64HHZ8Bn/view"],
+  ["Verify Nozzle & Head Quality (procedure)","https://drive.google.com/file/d/18okOyaKOup2Mnznyz9AoAGLZhQcToPrB/view"],
+  ["Lubricate Carriage Bearing Plates (photos)","https://drive.google.com/file/d/1UJC5zEBz3YFWl4E3YrpLZBqD35QYYq1f/view"]
+ ]],
+ ["Durst P5-350",[
+  ["Service Intervals (owner) — P5 210/350","https://drive.google.com/file/d/1TsjIaeBl1pEH8qeOxdIOWMBUsbZpNg5z/view"],
+  ["Daily/Weekly + Monthly/Yearly Checklist","https://drive.google.com/file/d/1Wv2ZCWUArEvcOgCa2tr8GjliHyXkjoSM/view"]
+ ]],
+ ["Durst P5-Tex",[
+  ["Service Intervals — P5 Tex / iSub","https://drive.google.com/file/d/15zEzka6pdZrtLhOo8gof9Pcjox8eOqfN/view"],
+  ["Daily/Weekly/Monthly/Yearly Checklist","https://drive.google.com/file/d/1wgzSe0fZaDPqIs2RB3l92jSZ1QWI143D/view"],
+  ["Daily/Weekly/Monthly/Bi-Monthly Checklist","https://drive.google.com/file/d/1ek1jTBUAlHNozSZzbd02O2ffWg3MUwNg/view"]
+ ]],
+ ["Durst P5 (both)",[
+  ["Lubricate Carriage Bearing Plates — grease P/N 4290014","https://drive.google.com/file/d/1REJcpB3ya_gGIKgB5kZWU34LBQJ9VnQ7/view"],
+  ["Carriage Lubrication — every 10,000 m² / 107,639 sq ft","https://drive.google.com/file/d/10b1IA30-7pBtehW-Jqgwa4NKgB8Gq8Be/view"]
+ ]],
+ ["Monti Antonio",[
+  ["Calender 91/3600 — Scheduled Maintenance","https://drive.google.com/file/d/1zshdJhHX5NNO7FryQwceIn9Jf7RwDQP-/view"],
+  ["Calender 902-3600 — Ordinary + Scheduled Maintenance","https://drive.google.com/file/d/1vhSA629bcmCZTf9Lzil85WsCoaWfrCSS/view"],
+  ["WS Internal Heat Press Schedule (xlsx)","https://drive.google.com/file/d/1F0vH31TuOPFxVdK7HxUiMbiwhG-z4V_3/view"]
+ ]],
+ ["Filter / Head Change Logs (per-machine reminders)",[
+  ["CA Machines folder","https://drive.google.com/drive/folders/1FMSU1ToF_r9vBL6bsLb1wRUIRD0iAhho"],
+  ["PA Machines folder","https://drive.google.com/drive/folders/1jWjfsUg_jr8esOWyFeQ0u-kDDEOGu863"],
+  ["MX Machines folder","https://drive.google.com/drive/folders/1vqGf4PqWWrz7jCvKpTiisjiq37O1S38J"]
+ ]]
+];
 
-async function loadLog(){
-  const lv = await gapi("/values/" + encodeURIComponent(CONFIG.LOG_TAB + "!A2:G10000"));
-  logRows = lv.values || [];
-}
+const NOTES = [
+ "MX Monti 2 (Mod. 858-2200) has no maintenance document (confirmed) — tasks not assigned.",
+ "PA Durst P5-Tex added — serial # still needs to be added to the machine list sheet.",
+ "Machines with no maintenance docs yet: Klieverik/Klieverick (CA+MX), Zund (CA+MX), Vutek 3r.",
+ "Grommeters will be added later. FabriVu and Aleph removed (machines are gone).",
+ "CA Monti 1 & 2 use the WS internal heat-press schedule (working-day intervals); the OEM Calender 91 schedule is linked in the Inspection Guide."
+];
 
-/* ---------- Rendering ---------- */
-function lastEntryFor(name){
-  let best = null;
-  for (const r of logRows) if (r[2] === name && r[1] && (!best || r[1] > best[1])) best = r;
-  return best;
-}
+/* ================= STATE ================= */
+let store = {};
+try { store = JSON.parse(localStorage.getItem("wsd-maint") || "{}"); } catch(e){ store = {}; }
+function save(){ try{ localStorage.setItem("wsd-maint", JSON.stringify(store)); }catch(e){} }
 
-function renderTabs(){
-  const locs = ["All", ...[...new Set(machines.map(m => m.loc))]];
-  $("tabs").innerHTML = locs.map(l =>
-    `<button class="tab ${l===activeLoc?"active":""}" onclick="activeLoc='${l}';render()">${l}</button>`).join("");
-}
+/* ================= GOOGLE SIGN-IN + SHEET LOGGING ================= */
+let user = null, accessToken = null, tokenClient = null;
+let queue = [];
+try { queue = JSON.parse(localStorage.getItem("wsd-queue") || "[]"); } catch(e){ queue = []; }
+function saveQueue(){ try{ localStorage.setItem("wsd-queue", JSON.stringify(queue)); }catch(e){} }
 
-function render(){
-  renderTabs();
-  const q = $("search").value.toLowerCase();
-  const list = machines.filter(m =>
-    (activeLoc === "All" || m.loc === activeLoc) &&
-    (m.name + " " + m.serial + " " + m.vendor).toLowerCase().includes(q));
-
-  $("grid").innerHTML = list.map(m => {
-    const last = lastEntryFor(m.name);
-    let lastHtml;
-    if (!last) lastHtml = `<span class="none">No maintenance logged yet</span>`;
-    else {
-      const days = Math.floor((Date.now() - new Date(last[1] + "T00:00:00")) / 86400000);
-      const cls = days > 30 ? "warn" : "ok";
-      lastHtml = `Last: <span class="${cls}">${last[1]}</span> · ${esc(last[3])} — ${esc(last[4])}`;
+function initAuth(){
+  if(!window.google || !google.accounts || !google.accounts.oauth2){ setTimeout(initAuth, 300); return; }
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CONFIG.CLIENT_ID,
+    scope: "openid email profile https://www.googleapis.com/auth/spreadsheets",
+    callback: async (resp) => {
+      if(resp.error){ setSync("Sign-in failed: " + resp.error); return; }
+      accessToken = resp.access_token;
+      try{
+        const r = await fetch("https://www.googleapis.com/oauth2/v3/userinfo",
+          { headers: { Authorization: "Bearer " + accessToken } });
+        user = await r.json();
+      }catch(e){ user = { email: "(unknown)" }; }
+      updateUserUI();
+      flushQueue();
     }
-    return `<div class="card">
-      <div class="top"><h3>${esc(m.name)}</h3><span class="loc-badge">${esc(m.loc)}</span></div>
-      <div class="meta">
-        ${m.model ? `<b>Model:</b> ${esc(m.model)}<br>` : ""}
-        <b>Serial:</b> ${esc(m.serial) || "—"}<br>
-        <b>Vendor:</b> ${esc(m.vendor) || "—"}
-      </div>
-      <div class="last">${lastHtml}</div>
-      <div class="actions">
-        <button class="btn btn-primary" onclick="openLog('${escAttr(m.name)}')">Log maintenance</button>
-        <button class="btn btn-ghost" onclick="openHist('${escAttr(m.name)}')">History</button>
-      </div>
+  });
+}
+function handleAuthClick(){
+  if(user){
+    if(accessToken){ try{ google.accounts.oauth2.revoke(accessToken, ()=>{}); }catch(e){} }
+    user = null; accessToken = null; updateUserUI(); return;
+  }
+  if(!tokenClient){ alert("Google sign-in is still loading — try again in a second."); return; }
+  tokenClient.requestAccessToken({ prompt: "" });
+}
+function updateUserUI(){
+  const card = $("#userCard"), btn = $("#authBtn");
+  if(user){
+    card.innerHTML = `<div class="role">Signed in${user.name ? " · " + user.name : ""}</div><div>${user.email || ""}</div>`;
+    btn.textContent = "⎋ Sign Out";
+  } else {
+    card.innerHTML = `<div class="role">Not signed in</div><div>Sign in to log maintenance</div>`;
+    btn.textContent = "Sign in with Google";
+  }
+}
+function setSync(msg){ const el = $("#syncStatus"); if(el) el.textContent = msg || ""; }
+
+async function appendRows(rows){
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SPREADSHEET_ID}/values/${encodeURIComponent(CONFIG.LOG_SHEET)}!A1:append?valueInputOption=USER_ENTERED`;
+  const r = await fetch(url, {
+    method: "POST",
+    headers: { Authorization: "Bearer " + accessToken, "Content-Type": "application/json" },
+    body: JSON.stringify({ values: rows })
+  });
+  if(!r.ok) throw new Error("HTTP " + r.status);
+}
+async function flushQueue(){
+  if(!accessToken || !queue.length) return;
+  const rows = queue.map(e => e.row);
+  try{
+    await appendRows(rows);
+    queue = []; saveQueue();
+    setSync("✓ Maintenance logged " + new Date().toLocaleTimeString());
+  }catch(err){
+    if(String(err).includes("401")){ accessToken = null; }
+    setSync("⚠ " + queue.length + " log entr" + (queue.length===1?"y":"ies") + " pending — will retry on next action or sign-in");
+  }
+}
+function logAction(loc, mi, ti, action){
+  const m = LOCS[loc].machines[mi], t = T[m.t][ti];
+  const row = [ new Date().toLocaleString(), user ? user.email : "", loc, m.n, m.s, t[0], CHIPS[t[1]][0], action ];
+  queue.push({ row }); saveQueue(); flushQueue();
+}
+
+let view = "dash", filter = "all", query = "";
+
+/* ================= RENDER ================= */
+const $ = s => document.querySelector(s);
+const content = $("#content");
+
+function taskId(loc,mi,ti){ return loc+"|"+mi+"|"+ti; }
+function stateOf(id){ return store[id] || "open"; }
+
+function counts(loc){
+  let a=0,d=0,nd=0;
+  LOCS[loc].machines.forEach((m,mi)=>{ if(!m.t) return;
+    T[m.t].forEach((t,ti)=>{ a++; const s=stateOf(taskId(loc,mi,ti)); if(s==="done")d++; else if(s==="notdone")nd++; });
+  });
+  return {a,d,nd,rate: a? Math.round(d/a*1000)/10 : 0};
+}
+
+function chip(k){ const c=CHIPS[k]; return `<span class="chip ${c[1]}">${c[0]}</span>`; }
+
+function renderLoc(loc){
+  const L=LOCS[loc], c=counts(loc);
+  $("#pageTitle").innerHTML = "🖨 "+L.name;
+  $("#pageSub").textContent = "Department view through "+new Date().toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"});
+  let h = `
+  <div class="stats">
+    <div class="stat assigned"><div class="lbl">Tasks Assigned</div><div class="val">${c.a}</div></div>
+    <div class="stat done"><div class="lbl">Completed</div><div class="val">${c.d}</div></div>
+    <div class="stat rate"><div class="lbl">Completion Rate</div><div class="val">${c.rate}%</div></div>
+    <div class="stat notdone"><div class="lbl">Not Completed</div><div class="val">${c.nd}</div></div>
+  </div>
+  <div class="panel">
+    <div class="panel-head">
+      <h2>🖨 ${L.name} — All tasks</h2>
+      <input class="search" placeholder="Search tasks…" value="${query}" oninput="setQuery(this.value)">
+      <button class="pill ${filter==='open'?'on':''}" onclick="setFilter('open')">Open</button>
+      <button class="pill ${filter==='done'?'on':''}" onclick="setFilter('done')">Completed</button>
+      <button class="pill ${filter==='notdone'?'on':''}" onclick="setFilter('notdone')">Not completed</button>
+      <button class="pill ${filter==='all'?'on':''}" onclick="setFilter('all')">All</button>
+      <button class="pill log" onclick="document.getElementById('logModal').classList.add('show')">＋ Log</button>
     </div>`;
-  }).join("") || `<div class="empty">No machines match.</div>`;
+  let any=false;
+  L.machines.forEach((m,mi)=>{
+    if(!m.t){
+      h += `<div class="machine"><div class="m-head" onclick="toggle(this)"><span class="caret">▶</span>
+        <div><div class="m-title">${m.n}</div><div class="m-serial">${m.s}</div></div>
+        <div class="m-prog">no schedule on file</div></div>
+        <div class="m-body"><div class="nodocs">${m.flag || "No maintenance documents on file for this machine yet."}</div></div></div>`;
+      return;
+    }
+    const tasks = T[m.t];
+    let rows="", shown=0, mdone=0;
+    tasks.forEach((t,ti)=>{
+      const id = taskId(loc,mi,ti), st = stateOf(id);
+      if(st==="done") mdone++;
+      if(filter!=="all" && st!==(filter==="open"?"open":filter)) return;
+      if(query && !t[0].toLowerCase().includes(query.toLowerCase())) return;
+      shown++;
+      rows += `<div class="task ${st}" id="t-${id.replace(/[|]/g,'_')}">
+        <div class="t-name">${t[0]}${t[2]?`<span class="t-note">${t[2]}</span>`:""}</div>
+        ${chip(t[1])}
+        <div class="t-btns">
+          <button class="t-btn yes" title="Mark completed" onclick="mark('${id}','done')">✓</button>
+          <button class="t-btn no" title="Mark not completed" onclick="mark('${id}','notdone')">✕</button>
+        </div></div>`;
+    });
+    if(shown) any=true;
+    const pct = Math.round(mdone/tasks.length*100);
+    h += `<div class="machine open"><div class="m-head" onclick="toggle(this)"><span class="caret">▶</span>
+      <div><div class="m-title">${m.n}</div><div class="m-serial">${m.s}</div></div>
+      <div class="m-prog">${mdone}/${tasks.length} done <span class="m-bar"><i style="width:${pct}%"></i></span></div></div>
+      <div class="m-body">${rows || `<div class="nodocs">No tasks in this filter.</div>`}</div></div>`;
+  });
+  if(!any && (filter!=="all"||query)) h += `<div class="empty"><div class="ei">🗂</div>No tasks in this filter.</div>`;
+  h += `</div>`;
+  content.innerHTML = h;
 }
 
-function esc(s){ return (s||"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
-function escAttr(s){ return esc(s).replace(/'/g, "\\'"); }
-
-/* ---------- Log entry ---------- */
-let currentMachine = null;
-function openLog(name){
-  currentMachine = name;
-  $("logTitle").textContent = "Log Maintenance";
-  $("logSub").textContent = name;
-  $("fDate").value = new Date().toISOString().slice(0,10);
-  $("fTask").value = ""; $("fNotes").value = "";
-  $("logOverlay").classList.add("open");
-}
-function closeModal(id){ $(id).classList.remove("open"); }
-
-async function saveLog(){
-  if (!$("fTask").value.trim()) { toast("Enter the task performed"); return; }
-  $("saveBtn").disabled = true;
-  try {
-    const row = [
-      new Date().toISOString(),
-      $("fDate").value,
-      currentMachine,
-      $("fType").value,
-      $("fTask").value.trim(),
-      user.email,
-      $("fNotes").value.trim()
-    ];
-    await gapi("/values/" + encodeURIComponent(CONFIG.LOG_TAB + "!A1") + ":append?valueInputOption=USER_ENTERED",
-      { method: "POST", body: JSON.stringify({ values: [row] }) });
-    logRows.push(row);
-    closeModal("logOverlay");
-    render();
-    toast("Maintenance logged ✓");
-  } catch (e) { toast("Save failed: " + e.message); }
-  $("saveBtn").disabled = false;
+function renderDash(){
+  $("#pageTitle").innerHTML = "▦ Dashboard";
+  $("#pageSub").textContent = "All locations — machine maintenance overview";
+  let h = `<div class="stats">`;
+  ["CA","PA","MX"].forEach(l=>{
+    const c=counts(l);
+    h += `<div class="stat ${c.rate>=85?'done':c.rate>=50?'rate':'notdone'}" style="cursor:pointer" onclick="go('${l}')">
+      <div class="lbl">${l} — ${LOCS[l].full}</div><div class="val">${c.rate}%</div>
+      <div style="font-size:12px;color:var(--muted)">${c.d} of ${c.a} tasks complete · ${LOCS[l].machines.length} machines</div></div>`;
+  });
+  h += `</div>
+  <div class="note-panel"><h3>⚠ Data notes / gaps to resolve</h3><ul>${NOTES.map(n=>`<li>${n}</li>`).join("")}</ul></div>
+  <div class="panel"><div class="panel-head"><h2>Locations</h2></div>`;
+  ["CA","PA","MX"].forEach(l=>{
+    const withDocs = LOCS[l].machines.filter(m=>m.t).length;
+    h += `<div class="machine"><div class="m-head" onclick="go('${l}')"><span class="caret">▶</span>
+      <div><div class="m-title">${LOCS[l].name}</div><div class="m-serial">${LOCS[l].full}</div></div>
+      <div class="m-prog">${withDocs} machines with schedules · ${LOCS[l].machines.length-withDocs} without</div></div></div>`;
+  });
+  h += `</div>`;
+  content.innerHTML = h;
 }
 
-/* ---------- History ---------- */
-function openHist(name){
-  const rows = logRows.filter(r => r[2] === name).sort((a,b) => (b[1]||"").localeCompare(a[1]||""));
-  $("histTitle").textContent = "History — " + name;
-  $("histSub").textContent = rows.length + " entr" + (rows.length===1?"y":"ies");
-  $("histBody").innerHTML = rows.length
-    ? `<table class="htable"><tr><th>Date</th><th>Type</th><th>Task</th><th>By</th><th>Notes</th></tr>` +
-      rows.map(r => `<tr><td>${esc(r[1])}</td><td>${esc(r[3])}</td><td>${esc(r[4])}</td><td>${esc((r[5]||"").split("@")[0])}</td><td>${esc(r[6])}</td></tr>`).join("") + `</table>`
-    : `<div class="empty">No maintenance logged for this machine yet.</div>`;
-  $("histOverlay").classList.add("open");
+function renderGuide(){
+  $("#pageTitle").innerHTML = "🗎 Documentation";
+  $("#pageSub").textContent = "Source documents in Google Drive (Equipment/Maintenance/Machine Maintenance)";
+  let h = `<div class="panel"><div class="panel-head"><h2>Maintenance source documents</h2></div><ul class="doc-list">`;
+  DOCS.forEach(([cat,items])=>{
+    h += `<div class="doc-cat">${cat}</div>`;
+    items.forEach(([t,u])=>{ h += `<li>📄 <a href="${u}" target="_blank" rel="noopener">${t}</a></li>`; });
+  });
+  h += `</ul></div>`;
+  content.innerHTML = h;
 }
+
+/* ================= ACTIONS ================= */
+function render(){
+  document.querySelectorAll(".nav-item").forEach(n=>n.classList.toggle("active", n.dataset.view===view));
+  if(view==="dash") renderDash();
+  else if(view==="guide") renderGuide();
+  else renderLoc(view);
+}
+function go(v){ view=v; filter="all"; query=""; render(); }
+function setFilter(f){ filter=f; render(); }
+function setQuery(q){ query=q; clearTimeout(window._qt); window._qt=setTimeout(()=>{ render(); const el=document.querySelector(".search"); if(el){ el.focus(); el.setSelectionRange(el.value.length,el.value.length); } },300); }
+function mark(id,st){
+  if(!user){ alert("Please sign in with your Google account first — completed maintenance must be logged with your name and a timestamp."); return; }
+  const prev = store[id] || "open";
+  store[id] = (store[id]===st) ? "open" : st; save();
+  const parts = id.split("|");
+  const now = store[id];
+  const action = now==="done" ? "Completed" : now==="notdone" ? "Marked NOT completed" : "Unchecked (was " + prev + ")";
+  logAction(parts[0], Number(parts[1]), Number(parts[2]), action);
+  render();
+}
+function toggle(head){ head.parentElement.classList.toggle("open"); }
+
+document.querySelectorAll(".nav-item").forEach(n=>n.addEventListener("click",()=>go(n.dataset.view)));
+initAuth();
+updateUserUI();
+render();
 </script>
 </body>
 </html>
