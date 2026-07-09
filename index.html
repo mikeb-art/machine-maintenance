@@ -29,6 +29,8 @@
   .nav-item:hover{background:rgba(255,255,255,.07)}
   .nav-item.active{background:var(--hl);border-left-color:var(--gold);color:#fff;font-weight:600}
   .nav-item .ico{width:18px;text-align:center}
+  .nav-subs{display:none}
+  .nav-subs.open{display:block}
   .nav-sub{display:flex;align-items:center;gap:8px;padding:6px 14px 6px 46px;font-size:12.5px;color:#b9cde6;cursor:pointer;border-left:4px solid transparent;line-height:1.3}
   .nav-sub:hover{background:rgba(255,255,255,.07)}
   .nav-sub.active{background:rgba(255,255,255,.14);border-left-color:var(--gold);color:#fff;font-weight:600}
@@ -643,6 +645,7 @@ function renderGuide(){
 function render(){
   document.querySelectorAll(".nav-item").forEach(n=>n.classList.toggle("active", n.dataset.view===view && selMachine===null));
   document.querySelectorAll(".nav-sub").forEach(n=>n.classList.toggle("active", n.dataset.loc===view && Number(n.dataset.mi)===selMachine));
+  document.querySelectorAll(".nav-subs").forEach(w=>w.classList.toggle("open", w.dataset.locwrap===view));
   if(view==="dash") renderDash();
   else if(view==="guide") renderGuide();
   else renderLoc(view);
@@ -670,6 +673,7 @@ Object.keys(LOCS).forEach(l=>{
   const anchor = document.querySelector(`.nav-item[data-view="${l}"]`);
   if(!anchor) return;
   const wrap = document.createElement("div");
+  wrap.className = "nav-subs"; wrap.dataset.locwrap = l;
   LOCS[l].machines.forEach((m,mi)=>{
     const d = document.createElement("div");
     d.className = "nav-sub";
