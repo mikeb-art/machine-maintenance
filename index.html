@@ -191,7 +191,7 @@ const CHIPS = {
   week:["Weekly","c-week"], wd3:["Every 3 Working Days","c-daily"], wd15:["Every 15 Working Days","c-15wd"],
   month:["Monthly","c-month"], wd45:["Every 45 Working Days","c-45wd"], qtr:["Quarterly","c-qtr"],
   half:["Half-Yearly","c-half"], year:["Yearly","c-year"], use:["Usage-Based","c-use"], req:["As Required","c-req"],
-  purge:["After Purge Cycle","c-req"]
+  purge:["After Purge Cycle","c-req"], biweek:["Bi-Weekly","c-15wd"]
 };
 
 const T = {}; // task templates
@@ -204,7 +204,7 @@ T.rhotex = [
  ["Clean machine and surrounding area","shift"],
  ["Check crash sensors for contamination or overspray; clean if necessary","daily"],
  ["Check cleaning station (left) and capping station (right); clean if necessary (wipe + distilled water)","daily"],
- ["Check waste container (mesh tray and capping station); empty if necessary","daily"],
+ ["Check waste container (mesh tray and capping station); clean and empty if necessary","daily"],
  ["Check and clean carriage sledge from below with distilled water","daily"],
  ["Check the spitting pad; clean or change if necessary","daily"],
  ["Oil linear carriage bearing guide","week"],
@@ -213,14 +213,14 @@ T.rhotex = [
  ["Print Nozzle Check on paper and file with name / date","week"],
  ["Check jar and filter on the ink suction wand; empty/replace if necessary","week"],
  ["Check chiller water level and cooling fins; clean if necessary (switch off unit when cleaning!)","week"],
- ["Supervisor: confirm weekly that the maintenance log is completed and initialed (TPM SOP)","week"],
- ["Clean encoder ruler and check for scratches or other damage","month"],
+ ["Supervisor: confirm weekly that the maintenance log is completed and initialed","week"],
+ ["Clean encoder ruler and check for scratches or other damage","month","Softly use a lint-free wipe, wiping straight up and down"],
  ["Check the chiller air filter; clean as needed","month"],
  ["Check ink level in on-board vacuum; empty if necessary","month"],
  ["Quarterly basic cleaning (exterior/interior, top and underside)","qtr"],
  ["Replace lubrication plates on the print head carriage","half"],
  ["Lubricate print head carriage bushings","half","Every 108,000 sq ft OR every 6 months, whichever first"],
- ["Change cooling system (chiller) water","half"],
+ ["Change cooling system (chiller) water","year"],
  ["6-month Durst service checklist (print quality, carriage, capping station, purge unit, media transport, ink system, cooling unit, workstation, safety devices)","half"],
  ["Yearly Durst service checklist (6-month items + grease carriage rail & head-media-distance bearings, grease transport motor bearing, vaseline cable chain, replace main ink filters, replace cooling liquid)","year"],
  ["Grease transport motor","use","At 13,000 hours of operation"],
@@ -237,15 +237,15 @@ T.p5350 = [
  ["Check conveyor belt, dancing rollers and redirection rolls of feed table; clean if necessary","d2"],
  ["Check aerosol extraction air filter; clean if necessary","d2"],
  ["Check carriage guide acoustically and visually; lubricate","week"],
- ["Check water level of the cooling system","week"],
- ["Check air filter of the cooling system; clean if necessary","week"],
+ ["Check chiller water level","week"],
+ ["Check chiller air filter and clean if necessary","week"],
  ["Check main tank ventilation (de-air) filters; clean/replace if necessary","week"],
  ["Document print head condition; print nozzle test, label with date/time/system # and archive","week","Keep test images — warranty claims require them"],
  ["Check air filters of UV LED units; clean/replace if necessary","week"],
- ["Check conveyor belt for soiling; clean if necessary","month"],
- ["Check encoder ruler; clean if necessary","month"],
+ ["Check conveyor belt for soiling or overspray; clean if necessary","month"],
+ ["Clean encoder ruler and check for scratches or other damage","month","Softly use a lint-free wipe, wiping straight up and down"],
  ["Maintenance on ionizer","month"],
- ["Replace lubrication plates of print carriage bearings (P5 210/350 only)","month"],
+ ["Replace lubrication plates of print carriage bearings (only P5 350HS — confirm)","month"],
  ["Create backup of the workstation","half"],
  ["Clean ventilation of the workstation","half"],
  ["Lubricate print carriage bearing","use","Every 10,000 m² (107,639 sq ft) printed — Durst grease P/N 4290014"],
@@ -256,20 +256,20 @@ T.p5350 = [
 ];
 
 T.p5tex = [
- ["Wipe print heads with a wet cloth","purge","After every purge cycle"],
  ["Carry out print head maintenance","daily","At start of shift"],
  ["Check tensioning rolls for soiling; clean if necessary","daily"],
  ["Check rollers for soiling; clean if necessary","daily"],
  ["Check capping station","d2"],
- ["Check protective plate for soiling; clean if necessary","d2"],
+ ["Check protection plate and clean if necessary","d2"],
  ["Check aerosol extraction air filter; clean if necessary","d2"],
  ["Lubricate carriage guide","week"],
- ["Check status of the coolant / cooler protectant","week"],
- ["Check air filter of the cooling system; clean if necessary","week"],
- ["Service capping station","week"],
- ["Dryer: clean heating sign, redirection rollers + support rolls, empty catch trays, clean pyrometer protective glasses","week"],
+ ["Check status of coolant chiller","week"],
+ ["Check chiller air filter and clean if necessary","week"],
+ ["Clean capping station and sealing lip","week"],
+ ["Clean capping station wire mesh, drain 2L of waterbath, top off with 2L of distilled water","biweek"],
+ ["Dryer: clean redirection rollers + support rolls, empty catch trays, clean pyrometer protective glasses","week"],
  ["Check de-air filters of main ink tanks; clean/replace if necessary","week"],
- ["Check encoder ruler; clean if necessary","month"],
+ ["Clean encoder ruler and check for scratches or other damage","month","Softly use a lint-free wipe, wiping straight up and down"],
  ["Lubricate seals and toothed rack at the dryer","half"],
  ["Lubricate carriage bearing plates","use","Every 10,000 m² (107,639 sq ft) printed — Durst grease P/N 4290014"],
  ["Refill ink","req"],
@@ -299,9 +299,9 @@ T.montiWS = [
  ["Clean fans for side panel cooling","wd3"],
  ["Grease heated roller supports (left and right side)","wd3"],
  ["Clean electrical box grate filters (vacuum pad; cut new filters when vacuuming no longer removes dust)","wd3"],
- ["Clean resistance slip ring and brushes","wd3"],
+ ["Clean resistance slip ring and brushes","week"],
  ["Charge batteries in emergency crank drill","wd15"],
- ["Grease chains","wd15"],
+ ["Clean and grease driving chains","month"],
  ["Check chain tension","wd45"],
  ["Grease bearings and supports","wd45"],
  ["Replace the safety thermostat (manual p. 53)","use","Every 10,000 hours / 5 years"]
@@ -329,9 +329,7 @@ const LOCS = {
    {n:"Durst P5-350", s:"SER # AK26-117 · Sys # 298127", t:"p5350"},
    {n:"Durst P5-Tex", s:"SER # AE28-019 · Sys # 298155", t:"p5tex"},
    {n:"Monti 1 (Heat Press)", s:"SER # 2016216", t:"montiWS"},
-   {n:"Monti 2 (Heat Press)", s:"SER # 2017445", t:"montiWS"},
-   {n:"Klieverick (GFC beltless)", s:"SER # 671", t:null},
-   {n:"Zund", s:"SER # G33XL320297", t:null}
+   {n:"Monti 2 (Heat Press)", s:"SER # 2017445", t:"montiWS"}
  ]},
  PA:{name:"PA-Printing", full:"Pennsylvania", machines:[
    {n:"Durst Rhotex 325-1", s:"SER # AD-28-031 · Sys # 105857", t:"rhotex"},
@@ -351,8 +349,7 @@ const LOCS = {
    {n:"Monti 3 (Mod. 902-3600)", s:"SER # 2021393", t:"monti902"},
    {n:"Monti 2 (Mod. 858-2200)", s:"SER # 2021144", t:null, flag:"No maintenance document exists for Model 858-2200 (confirmed) — nearest reference is the Monti 902 schedule"},
    {n:"Vutek 3r (EFI)", s:"SER # 9870418", t:null},
-   {n:"Klieverik MX-2 (GTC111-3500)", s:"SER # 891", t:null},
-   {n:"Zund", s:"SER # G33XL320840", t:null}
+   {n:"Klieverik MX-2 (GTC111-3500)", s:"SER # 891", t:null}
  ]}
 };
 
@@ -397,7 +394,7 @@ const DOCS = [
 const NOTES = [
  "MX Monti 2 (Mod. 858-2200) has no maintenance document (confirmed) — tasks not assigned.",
  "PA Durst P5-Tex added — serial # still needs to be added to the machine list sheet.",
- "Machines with no maintenance docs yet: Klieverik/Klieverick (CA+MX), Zund (CA+MX), Vutek 3r.",
+ "Machines with no maintenance docs yet: Klieverik MX-2, Vutek 3r.",
  "Grommeters will be added later. FabriVu and Aleph removed (machines are gone).",
  "CA Monti 1 & 2 use the WS internal heat-press schedule (working-day intervals); the OEM Calender 91 schedule is linked in the Inspection Guide."
 ];
