@@ -225,7 +225,6 @@ T.rhotex = [
  ["6-month Durst service checklist (print quality, carriage, capping station, purge unit, media transport, ink system, cooling unit, workstation, safety devices)","half"],
  ["Yearly Durst service checklist (6-month items + grease carriage rail & head-media-distance bearings, grease transport motor bearing, vaseline cable chain, replace main ink filters, replace cooling liquid)","year"],
  ["Grease transport motor","use","At 13,000 hours of operation"],
- ["Perform a cleaning cycle + wet wipe prior to standby","req"],
  ["Check electrical system of the cooling system (specialist)","req"],
  ["After printing direct to textile: check absorbent pads and clean mesh tray","req"],
  ["Log every filter or head change on the Filter/Head Change Log","req","Click + Log for what to record"]
@@ -329,8 +328,8 @@ const LOCS = {
    {n:"Durst Rhotex 325", s:"SER # AD28-042 · Sys # 142718", t:"rhotex"},
    {n:"Durst P5-350", s:"SER # AK26-117 · Sys # 298127", t:"p5350"},
    {n:"Durst P5-Tex", s:"SER # AE28-019 · Sys # 298155", t:"p5tex"},
-   {n:"Monti 1 (Heat Press)", s:"SER # 2016216", t:"montiWS"},
-   {n:"Monti 2 (Heat Press)", s:"SER # 2017445", t:"montiWS"}
+   {n:"Monti 1 (Mod. 91-3600)", s:"SER # 2016216", t:"monti91"},
+   {n:"Monti 2 (Mod. 91-3600)", s:"SER # 2017445", t:"monti91"}
  ]},
  PA:{name:"PA-Printing", full:"Pennsylvania", machines:[
    {n:"Durst Rhotex 325-1", s:"SER # AD-28-031 · Sys # 105857", t:"rhotex"},
@@ -382,8 +381,7 @@ const DOCS = [
  ]],
  ["Monti Antonio",[
   ["Calender 91/3600 — Scheduled Maintenance","https://drive.google.com/file/d/1zshdJhHX5NNO7FryQwceIn9Jf7RwDQP-/view"],
-  ["Calender 902-3600 — Ordinary + Scheduled Maintenance","https://drive.google.com/file/d/1vhSA629bcmCZTf9Lzil85WsCoaWfrCSS/view"],
-  ["WS Internal Heat Press Schedule (xlsx)","https://drive.google.com/file/d/1F0vH31TuOPFxVdK7HxUiMbiwhG-z4V_3/view"]
+  ["Calender 902-3600 — Ordinary + Scheduled Maintenance","https://drive.google.com/file/d/1vhSA629bcmCZTf9Lzil85WsCoaWfrCSS/view"]
  ]],
  ["Filter / Head Change Logs (per-machine reminders)",[
   ["CA Machines folder","https://drive.google.com/drive/folders/1FMSU1ToF_r9vBL6bsLb1wRUIRD0iAhho"],
@@ -395,9 +393,7 @@ const DOCS = [
 const NOTES = [
  "MX Monti 2 (Mod. 858-2200) has no maintenance document (confirmed) — tasks not assigned.",
  "PA Durst P5-Tex added — serial # still needs to be added to the machine list sheet.",
- "Machines with no maintenance docs yet: Klieverik MX-2, Vutek 3r.",
- "Grommeters will be added later. FabriVu and Aleph removed (machines are gone).",
- "CA Monti 1 & 2 use the WS internal heat-press schedule (working-day intervals); the OEM Calender 91 schedule is linked in the Inspection Guide."
+ "Machines with no maintenance docs yet: Klieverik MX-2, Vutek 3r."
 ];
 
 /* ================= STATE ================= */
