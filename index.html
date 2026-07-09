@@ -42,7 +42,7 @@
   .content{padding:22px 26px 60px}
 
   /* stats */
-  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:22px}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:22px;position:sticky;top:62px;z-index:4;background:var(--bg);padding:10px 0 6px}
   .stat{background:var(--card);border-radius:10px;box-shadow:var(--shadow);padding:14px 18px;border-top:4px solid var(--blue)}
   .stat .lbl{font-size:11px;font-weight:700;letter-spacing:1px;color:var(--muted);text-transform:uppercase}
   .stat .val{font-size:30px;font-weight:800;margin-top:2px}
@@ -405,7 +405,10 @@ const NOTES = [
 /* ================= STATE ================= */
 let store = {};
 try { store = JSON.parse(localStorage.getItem("wsd-maint") || "{}"); } catch(e){ store = {}; }
-function save(){ try{ localStorage.setItem("wsd-maint", JSON.stringify(store)); }catch(e){} }
+function save(){ try{ store._day = new Date().toDateString(); localStorage.setItem("wsd-maint", JSON.stringify(store)); }catch(e){} }
+/* Checkmarks + completion % reset automatically each day; the Log sheet keeps permanent history */
+function ensureToday(){ const t = new Date().toDateString(); if(store._day !== t){ store = { _day: t }; save(); } }
+ensureToday();
 
 /* ================= GOOGLE SIGN-IN + SHEET LOGGING ================= */
 let user = null, accessToken = null, tokenClient = null;
@@ -485,7 +488,7 @@ const $ = s => document.querySelector(s);
 const content = $("#content");
 
 function taskId(loc,mi,ti){ return loc+"|"+mi+"|"+ti; }
-function stateOf(id){ return store[id] || "open"; }
+function stateOf(id){ ensureToday(); return store[id] || "open"; }
 
 function counts(loc){
   let a=0,d=0,nd=0;
@@ -545,7 +548,7 @@ function renderLoc(loc){
     });
     if(shown) any=true;
     const pct = Math.round(mdone/tasks.length*100);
-    h += `<div class="machine open"><div class="m-head" onclick="toggle(this)"><span class="caret">▶</span>
+    h += `<div class="machine"><div class="m-head" onclick="toggle(this)"><span class="caret">▶</span>
       <div><div class="m-title">${m.n}</div><div class="m-serial">${m.s}</div></div>
       <div class="m-prog">${mdone}/${tasks.length} done <span class="m-bar"><i style="width:${pct}%"></i></span></div></div>
       <div class="m-body">${rows || `<div class="nodocs">No tasks in this filter.</div>`}</div></div>`;
