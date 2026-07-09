@@ -29,6 +29,9 @@
   .nav-item:hover{background:rgba(255,255,255,.07)}
   .nav-item.active{background:var(--hl);border-left-color:var(--gold);color:#fff;font-weight:600}
   .nav-item .ico{width:18px;text-align:center}
+  .nav-sub{display:flex;align-items:center;gap:8px;padding:6px 14px 6px 46px;font-size:12.5px;color:#b9cde6;cursor:pointer;border-left:4px solid transparent;line-height:1.3}
+  .nav-sub:hover{background:rgba(255,255,255,.07)}
+  .nav-sub.active{background:rgba(255,255,255,.14);border-left-color:var(--gold);color:#fff;font-weight:600}
   .side-foot{margin-top:auto;padding:14px}
   .user-card{background:rgba(255,255,255,.1);border-radius:8px;padding:10px 12px;font-size:13px}
   .user-card .role{font-size:11px;color:var(--ltblue)}
@@ -498,7 +501,7 @@ function logAction(loc, mi, ti, action){
   queue.push({ row }); saveQueue(); flushQueue();
 }
 
-let view = "dash", filter = "all", query = "";
+let view = "dash", filter = "all", query = "", selMachine = null;
 
 /* ================= RENDER ================= */
 const $ = s => document.querySelector(s);
@@ -547,7 +550,7 @@ function renderLoc(loc){
   h += `
   <div class="panel">
     <div class="panel-head">
-      <h2>🖨 ${L.name} — All tasks</h2>
+      <h2>🖨 ${L.name}${selMachine!==null && L.machines[selMachine] ? " — " + L.machines[selMachine].n : " — select a machine"}</h2>
       <input class="search" placeholder="Search tasks…" value="${query}" oninput="setQuery(this.value)">
       <button class="pill ${filter==='open'?'on':''}" onclick="setFilter('open')">Open</button>
       <button class="pill ${filter==='done'?'on':''}" onclick="setFilter('done')">Completed</button>
@@ -556,9 +559,11 @@ function renderLoc(loc){
       <button class="pill log" onclick="document.getElementById('logModal').classList.add('show')">＋ Log</button>
     </div>`;
   let any=false;
-  L.machines.forEach((m,mi)=>{
+  const _sel = (selMachine!==null && L.machines[selMachine]) ? [selMachine] : [];
+  if(!_sel.length) h += `<div class="empty"><div class="ei">🖨</div>Select a machine from the list on the left to view and check off its tasks.</div>`;
+  _sel.forEach((mi)=>{ const m = L.machines[mi];
     if(!m.t){
-      h += `<div class="machine"><div class="m-head" onclick="toggle(this)"><span class="caret">▶</span>
+      h += `<div class="machine open"><div class="m-head" onclick="toggle(this)"><span class="caret">▶</span>
         <div><div class="m-title">${m.n}</div><div class="m-serial">${m.s}</div></div>
         <div class="m-prog">no schedule on file</div></div>
         <div class="m-body"><div class="nodocs">${m.flag || "No maintenance documents on file for this machine yet."}</div></div></div>`;
@@ -588,7 +593,7 @@ function renderLoc(loc){
     });
     if(shown) any=true;
     const pct = mtot ? Math.round(mdone/mtot*100) : 0;
-    h += `<div class="machine"><div class="m-head" onclick="toggle(this)"><span class="caret">▶</span>
+    h += `<div class="machine open"><div class="m-head" onclick="toggle(this)"><span class="caret">▶</span>
       <div><div class="m-title">${m.n}</div><div class="m-serial">${m.s}</div></div>
       <div class="m-prog">${mdone}/${mtot} due-tasks done <span class="m-bar"><i style="width:${pct}%"></i></span></div></div>
       <div class="m-body">${rows || `<div class="nodocs">No tasks in this filter.</div>`}</div></div>`;
@@ -636,12 +641,14 @@ function renderGuide(){
 
 /* ================= ACTIONS ================= */
 function render(){
-  document.querySelectorAll(".nav-item").forEach(n=>n.classList.toggle("active", n.dataset.view===view));
+  document.querySelectorAll(".nav-item").forEach(n=>n.classList.toggle("active", n.dataset.view===view && selMachine===null));
+  document.querySelectorAll(".nav-sub").forEach(n=>n.classList.toggle("active", n.dataset.loc===view && Number(n.dataset.mi)===selMachine));
   if(view==="dash") renderDash();
   else if(view==="guide") renderGuide();
   else renderLoc(view);
 }
-function go(v){ view=v; filter="all"; query=""; render(); }
+function go(v){ view=v; selMachine=null; filter="all"; query=""; render(); }
+function goMachine(l,mi){ view=l; selMachine=mi; filter="all"; query=""; render(); }
 function setFilter(f){ filter=f; render(); }
 function setQuery(q){ query=q; clearTimeout(window._qt); window._qt=setTimeout(()=>{ render(); const el=document.querySelector(".search"); if(el){ el.focus(); el.setSelectionRange(el.value.length,el.value.length); } },300); }
 function mark(id,st){
@@ -659,6 +666,20 @@ function mark(id,st){
 function toggle(head){ head.parentElement.classList.toggle("open"); }
 
 document.querySelectorAll(".nav-item").forEach(n=>n.addEventListener("click",()=>go(n.dataset.view)));
+Object.keys(LOCS).forEach(l=>{
+  const anchor = document.querySelector(`.nav-item[data-view="${l}"]`);
+  if(!anchor) return;
+  const wrap = document.createElement("div");
+  LOCS[l].machines.forEach((m,mi)=>{
+    const d = document.createElement("div");
+    d.className = "nav-sub";
+    d.dataset.loc = l; d.dataset.mi = mi;
+    d.textContent = m.n;
+    d.addEventListener("click", ()=>goMachine(l, mi));
+    wrap.appendChild(d);
+  });
+  anchor.after(wrap);
+});
 initAuth();
 updateUserUI();
 render();
