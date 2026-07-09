@@ -96,6 +96,8 @@
   .task.done .t-btn.yes{background:var(--green);border-color:var(--green);color:#fff}
   .task.notdone .t-btn.no{background:var(--red);border-color:var(--red);color:#fff}
 
+  .t-group{display:flex;align-items:center;gap:8px;padding:7px 18px;background:#eef3f9;font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:#51698a;border-top:1px solid #e7edf5}
+  .t-group .g-count{margin-left:auto;font-weight:600;letter-spacing:0;text-transform:none;font-size:11.5px;color:var(--muted)}
   .empty{padding:56px 20px;text-align:center;color:#7d97b6;font-size:15px}
   .empty .ei{font-size:26px;margin-bottom:8px}
 
@@ -401,10 +403,33 @@ const NOTES = [
 /* ================= STATE ================= */
 let store = {};
 try { store = JSON.parse(localStorage.getItem("wsd-maint") || "{}"); } catch(e){ store = {}; }
-function save(){ try{ store._day = new Date().toDateString(); localStorage.setItem("wsd-maint", JSON.stringify(store)); }catch(e){} }
-/* Checkmarks + completion % reset automatically each day; the Log sheet keeps permanent history */
-function ensureToday(){ const t = new Date().toDateString(); if(store._day !== t){ store = { _day: t }; save(); } }
-ensureToday();
+function save(){ try{ localStorage.setItem("wsd-maint", JSON.stringify(store)); }catch(e){} }
+/* Each checkmark lasts for its own interval period — daily tasks reset each day, weekly each
+   week (Mon), monthly each calendar month, etc. The Log sheet keeps permanent history. */
+function periodKey(iv){
+  const now = new Date(), y = now.getFullYear(), m = now.getMonth();
+  const days = Math.floor(now.getTime()/86400000);
+  switch(iv){
+    case "week": { const d = new Date(now); d.setDate(d.getDate() - ((d.getDay()+6)%7)); return "W" + d.toDateString(); }
+    case "biweek": case "wd15": return "B" + Math.floor(days/14);
+    case "d2": return "D2-" + Math.floor(days/2);
+    case "wd3": return "D3-" + Math.floor(days/3);
+    case "month": return "M" + y + "-" + m;
+    case "wd45": return "D45-" + Math.floor(days/45);
+    case "qtr": return "Q" + y + "-" + Math.floor(m/3);
+    case "half": return "H" + y + "-" + (m<6?0:1);
+    case "year": return "Y" + y;
+    default: return "T" + now.toDateString(); /* shift, daily, use, req, purge */
+  }
+}
+const CATS = [
+  ["Daily / Shift", ["shift","daily","d2","wd3"]],
+  ["Weekly", ["week","biweek","wd15"]],
+  ["Monthly", ["month","wd45"]],
+  ["Quarterly & Longer", ["qtr","half","year"]],
+  ["As Needed", ["use","req","purge"]]
+];
+function catOf(iv){ for(const [n,l] of CATS) if(l.includes(iv)) return n; return "Other"; }
 
 /* ================= GOOGLE SIGN-IN + SHEET LOGGING ================= */
 let user = null, accessToken = null, tokenClient = null;
@@ -484,14 +509,23 @@ const $ = s => document.querySelector(s);
 const content = $("#content");
 
 function taskId(loc,mi,ti){ return loc+"|"+mi+"|"+ti; }
-function stateOf(id){ ensureToday(); return store[id] || "open"; }
+function stateOf(id, iv){
+  const e = store[id];
+  if(!e || typeof e !== "object") return "open";
+  return e.p === periodKey(iv) ? e.s : "open";
+}
 
 function counts(loc){
+  const per = {}; CATS.forEach(([n])=> per[n] = {a:0,d:0,nd:0});
   let a=0,d=0,nd=0;
   LOCS[loc].machines.forEach((m,mi)=>{ if(!m.t) return;
-    T[m.t].forEach((t,ti)=>{ a++; const s=stateOf(taskId(loc,mi,ti)); if(s==="done")d++; else if(s==="notdone")nd++; });
+    T[m.t].forEach((t,ti)=>{
+      const s = stateOf(taskId(loc,mi,ti), t[1]), cat = catOf(t[1]), p = per[cat];
+      p.a++; if(s==="done")p.d++; else if(s==="notdone")p.nd++;
+      if(cat !== "As Needed"){ a++; if(s==="done")d++; else if(s==="notdone")nd++; }
+    });
   });
-  return {a,d,nd,rate: a? Math.round(d/a*1000)/10 : 0};
+  return {a,d,nd,rate: a? Math.round(d/a*1000)/10 : 0, per};
 }
 
 function chip(k){ const c=CHIPS[k]; return `<span class="chip ${c[1]}">${c[0]}</span>`; }
@@ -500,13 +534,21 @@ function renderLoc(loc){
   const L=LOCS[loc], c=counts(loc);
   $("#pageTitle").innerHTML = "🖨 "+L.name;
   $("#pageSub").textContent = "Department view through "+new Date().toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"});
-  let h = `
-  <div class="stats">
-    <div class="stat assigned"><div class="lbl">Tasks Assigned</div><div class="val">${c.a}</div></div>
-    <div class="stat done"><div class="lbl">Completed</div><div class="val">${c.d}</div></div>
-    <div class="stat rate"><div class="lbl">Completion Rate</div><div class="val">${c.rate}%</div></div>
-    <div class="stat notdone"><div class="lbl">Not Completed</div><div class="val">${c.nd}</div></div>
-  </div>
+  let h = `<div class="stats">`;
+  CATS.forEach(([name])=>{
+    const p = c.per[name];
+    if(!p.a) return;
+    if(name === "As Needed"){
+      h += `<div class="stat"><div class="lbl">${name}</div><div class="val" style="font-size:24px">${p.d}<span style="font-size:13px;color:var(--muted);font-weight:500"> logged today</span></div>
+        <div style="font-size:12px;color:var(--muted)">${p.a} tasks · not counted in %</div></div>`;
+    } else {
+      const r = Math.round(p.d/p.a*100), cls = r>=85?'done':r>=50?'rate':'notdone';
+      h += `<div class="stat ${cls}"><div class="lbl">${name}</div><div class="val">${r}%</div>
+        <div style="font-size:12px;color:var(--muted)">${p.d} of ${p.a} done${p.nd?` · ${p.nd} not completed`:``}</div></div>`;
+    }
+  });
+  h += `</div>`;
+  h += `
   <div class="panel">
     <div class="panel-head">
       <h2>🖨 ${L.name} — All tasks</h2>
@@ -527,26 +569,32 @@ function renderLoc(loc){
       return;
     }
     const tasks = T[m.t];
-    let rows="", shown=0, mdone=0;
-    tasks.forEach((t,ti)=>{
-      const id = taskId(loc,mi,ti), st = stateOf(id);
-      if(st==="done") mdone++;
-      if(filter!=="all" && st!==(filter==="open"?"open":filter)) return;
-      if(query && !t[0].toLowerCase().includes(query.toLowerCase())) return;
-      shown++;
-      rows += `<div class="task ${st}" id="t-${id.replace(/[|]/g,'_')}">
-        <div class="t-name">${t[0]}${t[2]?`<span class="t-note">${t[2]}</span>`:""}</div>
-        ${chip(t[1])}
-        <div class="t-btns">
-          <button class="t-btn yes" title="Mark completed" onclick="mark('${id}','done')">✓</button>
-          <button class="t-btn no" title="Mark not completed" onclick="mark('${id}','notdone')">✕</button>
-        </div></div>`;
+    let rows="", shown=0, mdone=0, mtot=0;
+    CATS.forEach(([cname,ivs])=>{
+      let grows="", ga=0, gd=0;
+      tasks.forEach((t,ti)=>{
+        if(!ivs.includes(t[1])) return;
+        const id = taskId(loc,mi,ti), st = stateOf(id, t[1]);
+        ga++; if(st==="done") gd++;
+        if(cname !== "As Needed"){ mtot++; if(st==="done") mdone++; }
+        if(filter!=="all" && st!==(filter==="open"?"open":filter)) return;
+        if(query && !t[0].toLowerCase().includes(query.toLowerCase())) return;
+        shown++;
+        grows += `<div class="task ${st}" id="t-${id.replace(/[|]/g,'_')}">
+          <div class="t-name">${t[0]}${t[2]?`<span class="t-note">${t[2]}</span>`:""}</div>
+          ${chip(t[1])}
+          <div class="t-btns">
+            <button class="t-btn yes" title="Mark completed" onclick="mark('${id}','done')">✓</button>
+            <button class="t-btn no" title="Mark not completed" onclick="mark('${id}','notdone')">✕</button>
+          </div></div>`;
+      });
+      if(grows) rows += `<div class="t-group">${cname}<span class="g-count">${cname==="As Needed" ? ga+" tasks" : gd+"/"+ga+" done"}</span></div>` + grows;
     });
     if(shown) any=true;
-    const pct = Math.round(mdone/tasks.length*100);
+    const pct = mtot ? Math.round(mdone/mtot*100) : 0;
     h += `<div class="machine"><div class="m-head" onclick="toggle(this)"><span class="caret">▶</span>
       <div><div class="m-title">${m.n}</div><div class="m-serial">${m.s}</div></div>
-      <div class="m-prog">${mdone}/${tasks.length} done <span class="m-bar"><i style="width:${pct}%"></i></span></div></div>
+      <div class="m-prog">${mdone}/${mtot} due-tasks done <span class="m-bar"><i style="width:${pct}%"></i></span></div></div>
       <div class="m-body">${rows || `<div class="nodocs">No tasks in this filter.</div>`}</div></div>`;
   });
   if(!any && (filter!=="all"||query)) h += `<div class="empty"><div class="ei">🗂</div>No tasks in this filter.</div>`;
@@ -562,7 +610,8 @@ function renderDash(){
     const c=counts(l);
     h += `<div class="stat ${c.rate>=85?'done':c.rate>=50?'rate':'notdone'}" style="cursor:pointer" onclick="go('${l}')">
       <div class="lbl">${l} — ${LOCS[l].full}</div><div class="val">${c.rate}%</div>
-      <div style="font-size:12px;color:var(--muted)">${c.d} of ${c.a} tasks complete · ${LOCS[l].machines.length} machines</div></div>`;
+      <div style="font-size:12px;color:var(--muted)">${CATS.filter(([n])=>n!=="As Needed"&&c.per[n].a).map(([n])=>`${n.split(" ")[0]} ${c.per[n].d}/${c.per[n].a}`).join(" · ")}</div>
+      <div style="font-size:12px;color:var(--muted)">${LOCS[l].machines.length} machines</div></div>`;
   });
   h += `</div>
   <div class="note-panel"><h3>⚠ Data notes / gaps to resolve</h3><ul>${NOTES.map(n=>`<li>${n}</li>`).join("")}</ul></div>
@@ -601,10 +650,12 @@ function setFilter(f){ filter=f; render(); }
 function setQuery(q){ query=q; clearTimeout(window._qt); window._qt=setTimeout(()=>{ render(); const el=document.querySelector(".search"); if(el){ el.focus(); el.setSelectionRange(el.value.length,el.value.length); } },300); }
 function mark(id,st){
   if(!user){ alert("Please sign in with your Google account first — completed maintenance must be logged with your name and a timestamp."); return; }
-  const prev = store[id] || "open";
-  store[id] = (store[id]===st) ? "open" : st; save();
   const parts = id.split("|");
-  const now = store[id];
+  const iv = T[LOCS[parts[0]].machines[Number(parts[1])].t][Number(parts[2])][1];
+  const prev = stateOf(id, iv);
+  const now = (prev === st) ? "open" : st;
+  if(now === "open") delete store[id]; else store[id] = { s: now, p: periodKey(iv) };
+  save();
   const action = now==="done" ? "Completed" : now==="notdone" ? "Marked NOT completed" : "Unchecked (was " + prev + ")";
   logAction(parts[0], Number(parts[1]), Number(parts[2]), action);
   render();
