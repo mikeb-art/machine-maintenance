@@ -103,6 +103,9 @@
 
   .t-group{display:flex;align-items:center;gap:8px;padding:7px 18px;background:#eef3f9;font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:#51698a;border-top:1px solid #e7edf5}
   .t-group .g-count{margin-left:auto;font-weight:600;letter-spacing:0;text-transform:none;font-size:11.5px;color:var(--muted)}
+  .fb-label{display:block;font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);margin:12px 0 4px}
+  .fb-input{width:100%;padding:9px 11px;border:1px solid #d3deeb;border-radius:8px;font-size:14px;font-family:inherit}
+  textarea.fb-input{resize:vertical}
   .empty{padding:56px 20px;text-align:center;color:#7d97b6;font-size:15px}
   .empty .ei{font-size:26px;margin-bottom:8px}
 
@@ -150,6 +153,7 @@
   <div class="nav-item" data-view="guide"><span class="ico">🗎</span> Documentation</div>
 
   <div class="side-foot">
+    <button class="signout" style="margin:0 0 10px" onclick="openFeedback()">💬 Send Feedback</button>
     <div class="user-card" id="userCard">
       <div class="role">Not signed in</div>
       <div>Sign in to log maintenance</div>
@@ -181,6 +185,27 @@
     </ul>
     <p style="font-size:12px;color:#8a6d00">P5-Tex parts: carriage filter JKP 5µm PP (Durst P/N 1392545) · main ink tank filter MKL 5µm PP BLK (P/N 1392994). Values are found under Ink Heater (pressure/frequency) and Ink Cost (output, consumption) — never press Reset.</p>
     <button class="close" onclick="document.getElementById('logModal').classList.remove('show')">Close</button>
+  </div>
+</div>
+
+<div class="modal-bg" id="fbModal">
+  <div class="modal">
+    <h3>💬 Send Feedback</h3>
+    <p style="font-size:13px;color:var(--muted)">Suggest a feature, report a problem, or request a schedule change. Your name and email go with it.</p>
+    <label class="fb-label" for="fbType">Type</label>
+    <select id="fbType" class="fb-input">
+      <option>Feature request</option>
+      <option>Bug / problem</option>
+      <option>Task or schedule change</option>
+      <option>Other</option>
+    </select>
+    <label class="fb-label" for="fbText">Feedback</label>
+    <textarea id="fbText" class="fb-input" rows="4" placeholder="What should we add or change?"></textarea>
+    <div id="fbStatus" style="font-size:12px;color:var(--red);margin-top:6px"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:12px">
+      <button class="close" onclick="document.getElementById('fbModal').classList.remove('show')">Cancel</button>
+      <button class="close" id="fbSend" style="background:var(--blue);color:#fff;border-color:var(--blue)" onclick="submitFeedback()">Send</button>
+    </div>
   </div>
 </div>
 
@@ -667,6 +692,46 @@ function mark(id,st){
   render();
 }
 function toggle(head){ head.parentElement.classList.toggle("open"); }
+
+/* ---------- Feedback ---------- */
+function openFeedback(){
+  $("#fbStatus").textContent = "";
+  document.getElementById("fbModal").classList.add("show");
+}
+async function appendFeedback(row){
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SPREADSHEET_ID}/values/${encodeURIComponent("Feedback")}!A1:append?valueInputOption=USER_ENTERED`;
+  const post = (values) => fetch(url, { method:"POST",
+    headers:{ Authorization:"Bearer "+accessToken, "Content-Type":"application/json" },
+    body: JSON.stringify({ values }) });
+  let r = await post([row]);
+  if(r.status === 400){ /* Feedback tab missing — create it, add header, retry */
+    await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SPREADSHEET_ID}:batchUpdate`, { method:"POST",
+      headers:{ Authorization:"Bearer "+accessToken, "Content-Type":"application/json" },
+      body: JSON.stringify({ requests:[{ addSheet:{ properties:{ title:"Feedback" } } }] }) });
+    await post([["Timestamp","User","Name","Type","Feedback","Where"]]);
+    r = await post([row]);
+  }
+  if(!r.ok) throw new Error("HTTP " + r.status);
+}
+async function submitFeedback(){
+  if(!user || !accessToken){ alert("Please sign in with your Google account first so your feedback includes your name."); return; }
+  const txt = $("#fbText").value.trim();
+  if(!txt){ $("#fbStatus").textContent = "Please type your feedback first."; return; }
+  const btn = $("#fbSend"); btn.disabled = true;
+  $("#fbStatus").textContent = "Sending…";
+  const where = view==="dash" ? "Dashboard" : view==="guide" ? "Documentation"
+    : (LOCS[view] ? LOCS[view].name + (selMachine!==null && LOCS[view].machines[selMachine] ? " · " + LOCS[view].machines[selMachine].n : "") : String(view));
+  try{
+    await appendFeedback([ new Date().toLocaleString(), user.email || "", user.name || "", $("#fbType").value, txt, where ]);
+    $("#fbText").value = "";
+    document.getElementById("fbModal").classList.remove("show");
+    setSync("✓ Feedback sent — thank you!");
+  }catch(e){
+    if(String(e).includes("401")){ accessToken = null; }
+    $("#fbStatus").textContent = "Could not send (" + e.message + "). Please try again.";
+  }
+  btn.disabled = false;
+}
 
 document.querySelectorAll(".nav-item").forEach(n=>n.addEventListener("click",()=>go(n.dataset.view)));
 Object.keys(LOCS).forEach(l=>{
