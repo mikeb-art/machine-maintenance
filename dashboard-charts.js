@@ -11,6 +11,7 @@
   var CACHE_MS = 5 * 60 * 1000;      // re-pull the sheet at most every 5 min
   var cache = { at: 0, rows: null, err: null };
   var busy = false;
+  var hydrating = false;
 
   /* ---------- thresholds (days since last logged task) ---------- */
   var BANDS = [
@@ -191,6 +192,96 @@
     return { byMachine: byMachine, byLoc: byLoc };
   }
 
+  /* ================= hydrate the app's completion state from the sheet =====
+     The KPI percentages at the top of every page come from `store`, which
+     lived only in this browser's localStorage — so a machine that another
+     operator logged on still read 0% for everyone else. We replay the log
+     sheet into `store` using the app's own id/period scheme, so the
+     percentages reflect what the whole team has actually logged.
+     id format: "<LOC>|<machineIndex>|<taskIndex>"; store[id] = {s, p}.     */
+
+  var ACTION_STATE = {
+    "completed": "done",
+    "marked not completed": "notdone",
+    "unchecked": "open"
+  };
+
+  /* Run the app's own periodKey() as if "now" were `when`, so bucket
+     boundaries (working-day counters, bi-weekly, quarters…) match exactly. */
+  function periodKeyAt(iv, when) {
+    var RealDate = Date, t = when.getTime();
+    function Fake(a) {
+      if (arguments.length === 0) return new RealDate(t);
+      return new (Function.prototype.bind.apply(RealDate, [null].concat([].slice.call(arguments))))();
+    }
+    Fake.prototype = RealDate.prototype;
+    Fake.now = function () { return t; };
+    Fake.parse = RealDate.parse;
+    Fake.UTC = RealDate.UTC;
+    try {
+      window.Date = Fake;
+      return String(periodKey(iv));
+    } catch (e) {
+      return null;
+    } finally {
+      window.Date = RealDate;
+    }
+  }
+
+  function taskIndex(machine, taskText) {
+    var list = (typeof T !== "undefined" && T[machine.t]) || null;
+    if (!list) return -1;
+    var want = String(taskText || "").trim();
+    for (var i = 0; i < list.length; i++) {
+      if (String(list[i][0]).trim() === want) return i;
+    }
+    return -1;
+  }
+
+  function hydrateStore(rows) {
+    if (typeof store === "undefined" || !store || typeof periodKey !== "function") return false;
+    var changed = false;
+
+    // oldest first, so the most recent action for a task wins
+    var ordered = rows.slice().map(function (r) { return { r: r, t: parseTs(r[0]) }; })
+      .filter(function (x) { return !!x.t; })
+      .sort(function (a, b) { return a.t - b.t; });
+
+    ordered.forEach(function (x) {
+      var r = x.r;
+      var loc = String(r[2] || "").trim().toUpperCase().slice(0, 2);
+      if (!LOCS[loc]) return;
+
+      var machines = LOCS[loc].machines, mi = -1;
+      for (var i = 0; i < machines.length; i++) {
+        if (String(r[3] || "").trim().indexOf(machines[i].n) === 0) { mi = i; break; }
+      }
+      if (mi < 0) return;
+
+      var ti = taskIndex(machines[mi], r[5]);
+      if (ti < 0) return;
+
+      var iv = T[machines[mi].t][ti][1];
+      var nowKey = String(periodKey(iv));
+      if (periodKeyAt(iv, x.t) !== nowKey) return;      // logged in an earlier period
+
+      var st = ACTION_STATE[String(r[7] || "").trim().toLowerCase()];
+      if (!st) return;
+
+      var id = loc + "|" + mi + "|" + ti;
+      var prev = store[id];
+      if (st === "open") {
+        if (prev) { delete store[id]; changed = true; }
+      } else if (!prev || prev.s !== st || prev.p !== nowKey) {
+        store[id] = { s: st, p: nowKey };
+        changed = true;
+      }
+    });
+
+    if (changed) { try { if (typeof save === "function") save(); } catch (e) {} }
+    return changed;
+  }
+
   /* ---------- rendering ---------- */
   function shell(inner, note) {
     return '' +
@@ -304,6 +395,14 @@
     draw(shell('<div style="margin-top:12px;font-size:12.5px;color:#6b7f99">Loading log data…</div>', ""));
 
     loadRows(force).then(function (rows) {
+      // fold the team's logged completions into the app's own state, then let
+      // the app repaint its KPI percentages (guarded against a render loop)
+      if (!hydrating && hydrateStore(rows)) {
+        hydrating = true;
+        try { if (typeof render === "function") render(); } catch (e) {}
+        setTimeout(function () { hydrating = false; }, 1500);
+      }
+
       var data = summarize(rows);
       var body = Object.keys(LOCS).map(function (c) { return locBlock(c, data); }).join("");
       var total = rows.length;
