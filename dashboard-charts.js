@@ -333,6 +333,7 @@
 
   function hook() {
     restoreSession();
+    wrapAppend();
     if (typeof window.renderDash === "function" && !window.renderDash.__mmWrapped) {
       var orig = window.renderDash;
       var wrapped = function () {
@@ -347,7 +348,60 @@
     if (isDashboard()) setTimeout(function () { refresh(false); }, 0);
   }
 
-  window.MM_COVERAGE = { refresh: refresh, isDashboard: isDashboard };
+  /* ---- make a failed save LOUD ----------------------------------------
+     logAction() queues rows and flushQueue() appends them; if the append
+     fails (e.g. the operator only has read access to the log sheet) the
+     error was swallowed, so the checkbox ticked and nothing was saved.
+     Wrap appendRows and show a banner that cannot be missed.            */
+  function banner(msg, ok) {
+    var id = "mmSaveBanner";
+    var el = document.getElementById(id);
+    if (!el) {
+      el = document.createElement("div");
+      el.id = id;
+      el.style.cssText = "position:fixed;left:50%;transform:translateX(-50%);top:12px;z-index:9999;" +
+        "padding:11px 16px;border-radius:8px;font-size:13px;font-weight:600;max-width:640px;" +
+        "box-shadow:0 4px 14px rgba(0,0,0,.18);cursor:pointer";
+      el.onclick = function () { el.remove(); };
+      document.body.appendChild(el);
+    }
+    el.style.background = ok ? "#e6f6ec" : "#fdecec";
+    el.style.color = ok ? "#12703a" : "#a11d1d";
+    el.style.border = "1px solid " + (ok ? "#1e9e4a" : "#d93838");
+    el.textContent = msg;
+    if (ok) setTimeout(function () { if (el) el.remove(); }, 4000);
+  }
+
+  function wrapAppend() {
+    if (typeof window.appendRows !== "function" || window.appendRows.__mmWrapped) return;
+    var orig = window.appendRows;
+    var wrapped = function () {
+      var args = arguments, self = this;
+      return Promise.resolve()
+        .then(function () { return orig.apply(self, args); })
+        .then(function (r) {
+          cache.at = 0;                       // force the coverage card to re-read
+          if (isDashboard()) setTimeout(function () { refresh(true); }, 300);
+          return r;
+        })
+        .catch(function (e) {
+          var m = String((e && e.message) || e);
+          if (/403/.test(m)) {
+            banner("NOT SAVED — your Google account has read-only access to the maintenance log. " +
+                   "Ask Mike to give you edit access, then log it again.", false);
+          } else if (/401/.test(m)) {
+            banner("NOT SAVED — your session expired. Sign in with Google again and re-log this task.", false);
+          } else {
+            banner("NOT SAVED — could not write to the log sheet (" + m + "). Please try again.", false);
+          }
+          throw e;
+        });
+    };
+    wrapped.__mmWrapped = true;
+    window.appendRows = wrapped;
+  }
+
+  window.MM_COVERAGE = { refresh: refresh, isDashboard: isDashboard, banner: banner };
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", hook);
