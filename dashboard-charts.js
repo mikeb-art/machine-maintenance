@@ -78,11 +78,17 @@
      We stash it in sessionStorage (this tab only, expires with the token)
      and restore it on load.                                              */
   var SS_KEY = "wsd-maint-tok";
+  /* localStorage, not sessionStorage: operators open the site in a fresh tab
+     each time they "enter", and sessionStorage does not carry across tabs. */
+  var TOK_STORE = (function () {
+    try { localStorage.setItem("_t", "1"); localStorage.removeItem("_t"); return localStorage; }
+    catch (e) { return sessionStorage; }
+  })();
   function saveSession() {
     try {
       var t = token();
       if (!t) return;
-      sessionStorage.setItem(SS_KEY, JSON.stringify({
+      TOK_STORE.setItem(SS_KEY, JSON.stringify({
         t: t,
         u: (typeof user !== "undefined" && user) ? user : null,
         at: Date.now()
@@ -92,11 +98,11 @@
   function restoreSession() {
     try {
       if (token()) return false;
-      var raw = sessionStorage.getItem(SS_KEY);
+      var raw = TOK_STORE.getItem(SS_KEY);
       if (!raw) return false;
       var s = JSON.parse(raw);
-      if (!s || !s.t || Date.now() - s.at > 45 * 60 * 1000) {   // tokens last ~1h
-        sessionStorage.removeItem(SS_KEY);
+      if (!s || !s.t || Date.now() - s.at > 50 * 60 * 1000) {   // tokens last ~1h
+        TOK_STORE.removeItem(SS_KEY);
         return false;
       }
       accessToken = s.t;                                        // eslint-disable-line
@@ -116,7 +122,13 @@
     try {
       if (typeof tokenClient !== "undefined" && tokenClient &&
           typeof tokenClient.requestAccessToken === "function") {
-        tokenClient.requestAccessToken({ prompt: "" });
+        var hint = null;
+        try {
+          var raw = TOK_STORE.getItem(SS_KEY);
+          var s = raw ? JSON.parse(raw) : null;
+          hint = (s && s.u && s.u.email) || null;
+        } catch (e) {}
+        tokenClient.requestAccessToken(hint ? { prompt: "", hint: hint } : { prompt: "" });
         // give the callback a moment, then draw whatever we ended up with
         setTimeout(function () { refresh(true); }, 1200);
         setTimeout(function () { refresh(true); }, 3000);
@@ -200,11 +212,16 @@
      percentages reflect what the whole team has actually logged.
      id format: "<LOC>|<machineIndex>|<taskIndex>"; store[id] = {s, p}.     */
 
-  var ACTION_STATE = {
-    "completed": "done",
-    "marked not completed": "notdone",
-    "unchecked": "open"
-  };
+  /* Action column values are free text ("Unchecked (was done)"), so match on
+     the leading phrase rather than the whole string. */
+  function actionState(v) {
+    var s = String(v || "").trim().toLowerCase();
+    if (!s) return null;
+    if (s.indexOf("unchecked") === 0) return "open";
+    if (s.indexOf("marked not") === 0 || s.indexOf("not completed") > -1) return "notdone";
+    if (s.indexOf("completed") === 0) return "done";
+    return null;
+  }
 
   /* Run the app's own periodKey() as if "now" were `when`, so bucket
      boundaries (working-day counters, bi-weekly, quarters…) match exactly. */
@@ -265,7 +282,7 @@
       var nowKey = String(periodKey(iv));
       if (periodKeyAt(iv, x.t) !== nowKey) return;      // logged in an earlier period
 
-      var st = ACTION_STATE[String(r[7] || "").trim().toLowerCase()];
+      var st = actionState(r[7]);
       if (!st) return;
 
       var id = loc + "|" + mi + "|" + ti;
@@ -412,7 +429,8 @@
       stampLocationCards(data);
     }).catch(function (e) {
       if (e && e.authFail) {
-        try { sessionStorage.removeItem(SS_KEY); accessToken = null; } catch (e2) {}
+        try { TOK_STORE.removeItem(SS_KEY); accessToken = null; } catch (e2) {}
+        silentTried = false;   // allow one silent renewal attempt
         draw(shell('<div style="margin-top:12px;font-size:12.5px;color:#6b7f99">' +
           'Sign in with Google to load maintenance coverage from the log sheet.</div>', "not signed in"));
         silentSignIn();
@@ -433,6 +451,10 @@
   function hook() {
     restoreSession();
     wrapAppend();
+    // no stored token? try to renew without showing a prompt, on every view
+    if (!token()) setTimeout(silentSignIn, 400);
+    // and renew well before the ~1h token expiry so a long shift never drops out
+    setInterval(function () { silentTried = false; if (!token()) silentSignIn(); }, 40 * 60 * 1000);
     if (typeof window.renderDash === "function" && !window.renderDash.__mmWrapped) {
       var orig = window.renderDash;
       var wrapped = function () {
