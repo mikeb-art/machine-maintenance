@@ -60,25 +60,91 @@
     return days + " days ago";
   }
 
-  /* ---------- data ---------- */
-  function sheetsReady() {
-    return typeof gapi !== "undefined" && gapi.client &&
-           gapi.client.sheets && gapi.client.sheets.spreadsheets &&
-           gapi.client.getToken && gapi.client.getToken();
+  /* ---------- data ----------
+     The app holds its own OAuth token in the global `accessToken` and talks to
+     the Sheets REST API directly (no gapi client), so we do the same.        */
+  function token() {
+    try { return (typeof accessToken !== "undefined" && accessToken) || null; }
+    catch (e) { return null; }
+  }
+  function sheetsReady() { return !!token(); }
+
+  /* Ask Google for a token without showing any UI. Works when the user has
+     already granted this app access and still has a live Google session —
+     this is what stops the dashboard from looking "signed out" after F5.   */
+  /* ---- keep the session alive across a page refresh ----
+     The app keeps its token only in memory, so F5 looks like a sign-out.
+     We stash it in sessionStorage (this tab only, expires with the token)
+     and restore it on load.                                              */
+  var SS_KEY = "wsd-maint-tok";
+  function saveSession() {
+    try {
+      var t = token();
+      if (!t) return;
+      sessionStorage.setItem(SS_KEY, JSON.stringify({
+        t: t,
+        u: (typeof user !== "undefined" && user) ? user : null,
+        at: Date.now()
+      }));
+    } catch (e) {}
+  }
+  function restoreSession() {
+    try {
+      if (token()) return false;
+      var raw = sessionStorage.getItem(SS_KEY);
+      if (!raw) return false;
+      var s = JSON.parse(raw);
+      if (!s || !s.t || Date.now() - s.at > 45 * 60 * 1000) {   // tokens last ~1h
+        sessionStorage.removeItem(SS_KEY);
+        return false;
+      }
+      accessToken = s.t;                                        // eslint-disable-line
+      if (s.u && typeof user !== "undefined" && !user) user = s.u; // eslint-disable-line
+      try { if (typeof updateUserUI === "function") updateUserUI(); } catch (e) {}
+      try { if (typeof render === "function") render(); } catch (e) {}
+      return true;
+    } catch (e) { return false; }
+  }
+  setInterval(saveSession, 5000);
+  window.addEventListener("beforeunload", saveSession);
+
+  var silentTried = false;
+  function silentSignIn() {
+    if (silentTried || token()) return;
+    silentTried = true;
+    try {
+      if (typeof tokenClient !== "undefined" && tokenClient &&
+          typeof tokenClient.requestAccessToken === "function") {
+        tokenClient.requestAccessToken({ prompt: "" });
+        // give the callback a moment, then draw whatever we ended up with
+        setTimeout(function () { refresh(true); }, 1200);
+        setTimeout(function () { refresh(true); }, 3000);
+      }
+    } catch (e) { /* stay signed out */ }
   }
 
   function loadRows(force) {
     if (!force && cache.rows && Date.now() - cache.at < CACHE_MS) {
       return Promise.resolve(cache.rows);
     }
-    return gapi.client.sheets.spreadsheets.values.get({
-      spreadsheetId: CONFIG.SPREADSHEET_ID,
-      range: CONFIG.LOG_SHEET + "!A2:H"
-    }).then(function (resp) {
-      var rows = (resp.result && resp.result.values) || [];
-      cache = { at: Date.now(), rows: rows, err: null };
-      return rows;
-    });
+    var url = "https://sheets.googleapis.com/v4/spreadsheets/" +
+      encodeURIComponent(CONFIG.SPREADSHEET_ID) + "/values/" +
+      encodeURIComponent(CONFIG.LOG_SHEET + "!A2:H");
+    return fetch(url, { headers: { Authorization: "Bearer " + token() } })
+      .then(function (r) {
+        if (r.status === 401 || r.status === 403) {
+          var e = new Error("session expired — click Sign in with Google again");
+          e.authFail = true;
+          throw e;
+        }
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      })
+      .then(function (j) {
+        var rows = j.values || [];
+        cache = { at: Date.now(), rows: rows, err: null };
+        return rows;
+      });
   }
 
   /* Log columns: 0 Timestamp | 1 User | 2 Location | 3 Machine | 4 Serial
@@ -229,6 +295,8 @@
       draw(shell('<div style="margin-top:12px;font-size:12.5px;color:#6b7f99">' +
         'Sign in with Google to load maintenance coverage from the log sheet.</div>',
         "not signed in"));
+      if (restoreSession()) { setTimeout(function () { refresh(true); }, 50); return; }
+      silentSignIn();
       return;
     }
 
@@ -244,6 +312,13 @@
         ' · <a href="#" onclick="window.MM_COVERAGE.refresh(true);return false" style="color:#1f6fd6;text-decoration:none">refresh</a>'));
       stampLocationCards(data);
     }).catch(function (e) {
+      if (e && e.authFail) {
+        try { sessionStorage.removeItem(SS_KEY); accessToken = null; } catch (e2) {}
+        draw(shell('<div style="margin-top:12px;font-size:12.5px;color:#6b7f99">' +
+          'Sign in with Google to load maintenance coverage from the log sheet.</div>', "not signed in"));
+        silentSignIn();
+        return;
+      }
       draw(shell('<div style="margin-top:12px;font-size:12.5px;color:#d93838">Could not read the log sheet: ' +
         esc((e && (e.message || (e.result && e.result.error && e.result.error.message))) || "unknown error") +
         '</div>', "error"));
@@ -257,6 +332,7 @@
   }
 
   function hook() {
+    restoreSession();
     if (typeof window.renderDash === "function" && !window.renderDash.__mmWrapped) {
       var orig = window.renderDash;
       var wrapped = function () {
