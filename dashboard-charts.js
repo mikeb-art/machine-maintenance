@@ -109,15 +109,73 @@
       if (s.u && typeof user !== "undefined" && !user) user = s.u; // eslint-disable-line
       try { if (typeof updateUserUI === "function") updateUserUI(); } catch (e) {}
       try { if (typeof render === "function") render(); } catch (e) {}
+      // the restored token may be near-expiry or revoked (operator signed out
+      // elsewhere); proactively swap in a fresh one so writes don't silently 401.
+      setTimeout(function () { silentSignIn(true); }, 300);
       return true;
     } catch (e) { return false; }
   }
   setInterval(saveSession, 5000);
   window.addEventListener("beforeunload", saveSession);
 
+  /* ---- durable pending-write queue -------------------------------------
+     If a save fails (expired/stale token, transient error) we stash the exact
+     append call in localStorage and replay it automatically once we have a
+     valid token again — so an operator's logged task is never silently lost.
+     This is what went wrong for operators whose token quietly expired.     */
+  var PEND_KEY = "wsd-maint-pending";
+  var flushingPending = false;
+  function readPending() {
+    try { return JSON.parse(TOK_STORE.getItem(PEND_KEY) || "[]") || []; }
+    catch (e) { return []; }
+  }
+  function writePending(list) {
+    try {
+      if (list && list.length) TOK_STORE.setItem(PEND_KEY, JSON.stringify(list));
+      else TOK_STORE.removeItem(PEND_KEY);
+    } catch (e) {}
+  }
+  function queuePendingCall(argsArray) {
+    try {
+      var list = readPending(), sig = JSON.stringify(argsArray);
+      for (var i = 0; i < list.length; i++) if (JSON.stringify(list[i]) === sig) return;
+      list.push(argsArray);
+      writePending(list);
+    } catch (e) {}
+  }
+  function flushPending() {
+    if (flushingPending || !token()) return;
+    var list = readPending();
+    if (!list.length || typeof window.__mmOrigAppendRows !== "function") return;
+    flushingPending = true;
+    var remaining = [], idx = 0, savedAny = false;
+    function step() {
+      if (idx >= list.length) {
+        writePending(remaining);
+        flushingPending = false;
+        if (savedAny) {
+          banner("Saved your earlier entries after reconnecting.", true);
+          cache.at = 0;
+          if (isDashboard()) setTimeout(function () { refresh(true); }, 300);
+        }
+        return;
+      }
+      var callArgs = list[idx++];
+      Promise.resolve().then(function () { return window.__mmOrigAppendRows.apply(null, callArgs); })
+        .then(function () { savedAny = true; })
+        .catch(function () { remaining.push(callArgs); })
+        .then(step);
+    }
+    step();
+  }
+
   var silentTried = false;
-  function silentSignIn() {
-    if (silentTried || token()) return;
+  /* Ask Google for a fresh token with no UI. Pass force=true to renew even
+     when a (possibly stale) token is already present — the token the app
+     restores from storage can be near-expiry or revoked, and reusing it is
+     exactly what makes the app look "signed in" while every save 401s.     */
+  function silentSignIn(force) {
+    if (!force && (silentTried || token())) return;
     silentTried = true;
     try {
       if (typeof tokenClient !== "undefined" && tokenClient &&
@@ -129,11 +187,14 @@
           hint = (s && s.u && s.u.email) || null;
         } catch (e) {}
         tokenClient.requestAccessToken(hint ? { prompt: "", hint: hint } : { prompt: "" });
-        // give the callback a moment, then draw whatever we ended up with
-        setTimeout(function () { refresh(true); }, 1200);
-        setTimeout(function () { refresh(true); }, 3000);
+        // once GIS calls back with a fresh token: persist it, replay any
+        // unsaved rows, and repaint.
+        setTimeout(function () { silentTried = false; if (token()) { saveSession(); flushPending(); } refresh(true); }, 1400);
+        setTimeout(function () { if (token()) { saveSession(); flushPending(); } refresh(true); }, 3200);
+      } else {
+        silentTried = false;
       }
-    } catch (e) { /* stay signed out */ }
+    } catch (e) { silentTried = false; }
   }
 
   function loadRows(force) {
@@ -432,8 +493,8 @@
         try { TOK_STORE.removeItem(SS_KEY); accessToken = null; } catch (e2) {}
         silentTried = false;   // allow one silent renewal attempt
         draw(shell('<div style="margin-top:12px;font-size:12.5px;color:#6b7f99">' +
-          'Sign in with Google to load maintenance coverage from the log sheet.</div>', "not signed in"));
-        silentSignIn();
+          'Reconnecting to Google…</div>', "reconnecting"));
+        silentSignIn(true);
         return;
       }
       draw(shell('<div style="margin-top:12px;font-size:12.5px;color:#d93838">Could not read the log sheet: ' +
@@ -451,10 +512,14 @@
   function hook() {
     restoreSession();
     wrapAppend();
-    // no stored token? try to renew without showing a prompt, on every view
-    if (!token()) setTimeout(silentSignIn, 400);
-    // and renew well before the ~1h token expiry so a long shift never drops out
-    setInterval(function () { silentTried = false; if (!token()) silentSignIn(); }, 40 * 60 * 1000);
+    // always pull a fresh token on load (replaces any stale restored one), then
+    // replay anything that failed to save last time.
+    setTimeout(function () { silentSignIn(true); }, 500);
+    setTimeout(flushPending, 1500);
+    // renew well before the ~1h token expiry so a long shift never drops out,
+    // and keep retrying any unsaved rows.
+    setInterval(function () { silentSignIn(true); }, 30 * 60 * 1000);
+    setInterval(flushPending, 60 * 1000);
     if (typeof window.renderDash === "function" && !window.renderDash.__mmWrapped) {
       var orig = window.renderDash;
       var wrapped = function () {
@@ -496,30 +561,39 @@
   function wrapAppend() {
     if (typeof window.appendRows !== "function" || window.appendRows.__mmWrapped) return;
     var orig = window.appendRows;
+    window.__mmOrigAppendRows = orig;      // used by flushPending to replay
     var wrapped = function () {
-      var args = arguments, self = this;
+      var args = Array.prototype.slice.call(arguments), self = this;
       return Promise.resolve()
         .then(function () { return orig.apply(self, args); })
         .then(function (r) {
           cache.at = 0;                       // force the coverage card to re-read
           if (isDashboard()) setTimeout(function () { refresh(true); }, 300);
+          flushPending();                     // opportunistically drain backlog
           return r;
         })
         .catch(function (e) {
           var m = String((e && e.message) || e);
+          // Never lose the operator's work: stash it and recover automatically.
+          queuePendingCall(args);
           if (/403/.test(m)) {
-            banner("NOT SAVED — your Google account has read-only access to the maintenance log. " +
-                   "Ask Mike to give you edit access, then log it again.", false);
+            banner("Trouble saving — retrying. If this keeps showing, ask Mike to confirm your edit access.", false);
+            setTimeout(flushPending, 2500);
           } else if (/401/.test(m)) {
-            banner("NOT SAVED — your session expired. Sign in with Google again and re-log this task.", false);
+            banner("Reconnecting to save your entry…", false);
+            silentSignIn(true);               // auto re-auth, then flushPending fires
           } else {
-            banner("NOT SAVED — could not write to the log sheet (" + m + "). Please try again.", false);
+            banner("Couldn't save yet — will retry automatically.", false);
+            setTimeout(flushPending, 3000);
           }
-          throw e;
+          // Resolve (don't re-throw): the row is safely queued and will be
+          // replayed by flushPending, so the app's own queue won't double-send.
+          return;
         });
     };
     wrapped.__mmWrapped = true;
     window.appendRows = wrapped;
+    setTimeout(flushPending, 1200);           // catch rows left over from last visit
   }
 
   window.MM_COVERAGE = { refresh: refresh, isDashboard: isDashboard, banner: banner };
