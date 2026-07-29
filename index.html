@@ -493,7 +493,7 @@ function handleAuthClick(){
     user = null; accessToken = null; updateUserUI(); return;
   }
   if(!tokenClient){ alert("Google sign-in is still loading — try again in a second."); return; }
-  tokenClient.requestAccessToken({ prompt: "" });
+  tokenClient.requestAccessToken({ prompt: "select_account" });
 }
 function updateUserUI(){
   const card = $("#userCard"), btn = $("#authBtn");
