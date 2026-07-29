@@ -427,6 +427,115 @@
     if (old) old.outerHTML = html; else content.insertAdjacentHTML("beforeend", html);
   }
 
+  /* ================= Recent activity — last 7 days ========================
+     A period-independent view of who logged what recently, so real logging
+     stays visible even when the current-period compliance % has reset.     */
+  function fmtWhen(d) {
+    var diff = Date.now() - d.getTime();
+    if (diff < 3600000) return Math.max(1, Math.floor(diff / 60000)) + "m ago";
+    if (diff < 86400000) return Math.floor(diff / 3600000) + "h ago";
+    return d.toLocaleDateString(undefined, { weekday: "short" }) + " " +
+           d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  }
+  function userShort(u) {
+    u = String(u || "").trim();
+    var at = u.indexOf("@");
+    return at > 0 ? u.slice(0, at) : (u || "someone");
+  }
+  function actionDot(st) {
+    var c = st === "done" ? "#1e9e4a" : (st === "open" ? "#93a4bb" : "#d98a00");
+    return '<span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:' + c + ';margin-right:6px;vertical-align:middle"></span>';
+  }
+
+  function recentActivityCard(rows) {
+    var cutoff = Date.now() - 7 * DAY;
+    var items = [];
+    rows.forEach(function (r) {
+      var ts = parseTs(r[0]);
+      if (!ts || ts.getTime() < cutoff) return;
+      var loc = String(r[2] || "").trim().toUpperCase().slice(0, 2);
+      if (!LOCS[loc]) return;
+      items.push({
+        ts: ts, loc: loc,
+        machine: String(r[3] || "").trim(),
+        task: String(r[5] || "").trim(),
+        user: String(r[1] || "").trim(),
+        st: actionState(r[7])
+      });
+    });
+    items.sort(function (a, b) { return b.ts - a.ts; });
+
+    // per-location roll-up: operators active + entry counts
+    var per = {};
+    Object.keys(LOCS).forEach(function (c) { per[c] = { n: 0, users: {} }; });
+    items.forEach(function (it) {
+      var p = per[it.loc];
+      p.n++;
+      if (it.user) {
+        if (!p.users[it.user]) p.users[it.user] = { n: 0, last: it.ts };
+        p.users[it.user].n++;
+        if (it.ts > p.users[it.user].last) p.users[it.user].last = it.ts;
+      }
+    });
+
+    var summary = Object.keys(LOCS).map(function (c) {
+      var loc = LOCS[c], p = per[c];
+      var ops = Object.keys(p.users).sort(function (a, b) { return p.users[b].n - p.users[a].n; });
+      var chips = ops.length ? ops.map(function (u) {
+        return '<span style="display:inline-block;background:#eef3fa;border:1px solid #dde6f2;border-radius:999px;' +
+          'padding:2px 9px;font-size:11px;color:#33465e;margin:2px 4px 2px 0">' +
+          esc(userShort(u)) + ' <span style="color:#8496ad">· ' + p.users[u].n + '</span></span>';
+      }).join("") : '<span style="font-size:11.5px;color:#a4b1c4">no activity in the last 7 days</span>';
+      return '<div style="margin:10px 0 2px">' +
+        '<div style="font-size:12.5px;font-weight:700;color:#14417e">' + esc(loc.name) +
+          ' <span style="font-weight:400;color:#6b7f99">· ' + esc(loc.full) + '</span>' +
+          '<span style="float:right;font-weight:600;color:' + (p.n ? "#1e9e4a" : "#a4b1c4") + '">' + p.n + ' entr' + (p.n === 1 ? 'y' : 'ies') + '</span></div>' +
+        '<div style="margin-top:4px">' + chips + '</div></div>';
+    }).join("");
+
+    // most-recent feed
+    var MAXN = 14;
+    var feed = items.slice(0, MAXN).map(function (it) {
+      var task = it.task.length > 60 ? it.task.slice(0, 58) + "…" : it.task;
+      return '<div style="display:flex;gap:8px;padding:6px 0;border-top:1px solid #f0f3f8;font-size:12px;line-height:1.3">' +
+        '<div style="flex:0 0 76px;color:#6b7f99;white-space:nowrap">' + esc(fmtWhen(it.ts)) + '</div>' +
+        '<div style="flex:1 1 auto;color:#1b2a41">' + actionDot(it.st) +
+          '<span style="color:#33465e">' + esc(it.loc) + ' · ' + esc(it.machine) + '</span> — ' + esc(task) +
+          ' <span style="color:#8496ad">(' + esc(userShort(it.user)) + ')</span></div>' +
+        '</div>';
+    }).join("");
+    var more = items.length > MAXN ? '<div style="font-size:11px;color:#8496ad;margin-top:6px">+ ' + (items.length - MAXN) + ' more in the last 7 days</div>' : '';
+
+    var inner =
+      summary +
+      '<div style="font-size:11px;font-weight:700;color:#6b7f99;letter-spacing:.04em;text-transform:uppercase;margin:14px 0 2px">Latest entries</div>' +
+      (feed || '<div style="font-size:12px;color:#a4b1c4;padding:8px 0">Nothing logged in the last 7 days.</div>') +
+      more;
+
+    return '' +
+      '<div id="recentCard" style="background:#fff;border:1px solid #dbe3ee;border-radius:10px;' +
+      'box-shadow:0 1px 2px rgba(20,65,126,.06);padding:16px 18px;margin-top:14px">' +
+        '<div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px">' +
+          '<div>' +
+            '<div style="font-weight:700;color:#14417e;font-size:15px">Recent activity</div>' +
+            '<div style="font-size:12px;color:#6b7f99">Everything logged in the last 7 days · all operators</div>' +
+          '</div>' +
+          '<div style="font-size:11px;color:#6b7f99;text-align:right">Updated ' + esc(fmtNow()) + '<br>' +
+            items.length + ' entr' + (items.length === 1 ? 'y' : 'ies') + ' / 7d</div>' +
+        '</div>' + inner +
+      '</div>';
+  }
+
+  function drawRecent(html) {
+    var content = document.getElementById("content");
+    if (!content) return;
+    var old = document.getElementById("recentCard");
+    if (old) { old.outerHTML = html; return; }
+    var cov = document.getElementById("neglectCard");   // keep Recent above Coverage
+    if (cov) cov.insertAdjacentHTML("beforebegin", html);
+    else content.insertAdjacentHTML("beforeend", html);
+  }
+
   function stampLocationCards(data) {
     try {
       var content = document.getElementById("content");
@@ -482,6 +591,7 @@
       }
 
       var data = summarize(rows);
+      drawRecent(recentActivityCard(rows));           // "Recent activity — last 7 days", above Coverage
       var body = Object.keys(LOCS).map(function (c) { return locBlock(c, data); }).join("");
       var total = rows.length;
       draw(shell(legend() + body,
