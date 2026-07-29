@@ -189,7 +189,7 @@
         tokenClient.requestAccessToken(hint ? { prompt: "", hint: hint } : { prompt: "" });
         // once GIS calls back with a fresh token: persist it, replay any
         // unsaved rows, and repaint.
-        setTimeout(function () { silentTried = false; if (token()) { saveSession(); flushPending(); } refresh(true); }, 1400);
+        setTimeout(function () { if (token()) { saveSession(); flushPending(); } refresh(true); }, 1400);
         setTimeout(function () { if (token()) { saveSession(); flushPending(); } refresh(true); }, 3200);
       } else {
         silentTried = false;
