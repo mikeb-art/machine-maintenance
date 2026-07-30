@@ -221,8 +221,30 @@
       });
   }
 
-  /* Log columns: 0 Timestamp | 1 User | 2 Location | 3 Machine | 4 Serial
-                  5 Task | 6 Interval | 7 Action                              */
+  /* Log columns as actually written by the app:
+     0 Timestamp | 1 User | 2 User | 3 Machine | 4 Serial | 5 Task | 6 Interval | 7 Action
+     There is NO Location column, and the same model name repeats across sites,
+     so identify a row's machine by its globally-unique serial (col E), with an
+     exact machine-name fallback. Returns {loc, m, mi} or null. */
+  function locateRow(r) {
+    var ser = String(r[4] || "").trim();
+    var nm = String(r[3] || "").trim();
+    var lc, ms, i;
+    for (lc in LOCS) {
+      ms = LOCS[lc].machines;
+      for (i = 0; i < ms.length; i++) {
+        if (ser && ms[i].s === ser) return { loc: lc, m: ms[i], mi: i };
+      }
+    }
+    for (lc in LOCS) {
+      ms = LOCS[lc].machines;
+      for (i = 0; i < ms.length; i++) {
+        if (nm && nm === ms[i].n) return { loc: lc, m: ms[i], mi: i };
+      }
+    }
+    return null;
+  }
+
   function summarize(rows) {
     var byMachine = {};   // "CA|Durst Rhotex 325" -> {last:Date, count:int, count30:int, users:Set}
     var byLoc = {};       // "CA" -> {last:Date, count:int}
@@ -237,24 +259,16 @@
     rows.forEach(function (r) {
       var ts = parseTs(r[0]);
       if (!ts) return;
-      var loc = String(r[2] || "").trim().toUpperCase().slice(0, 2);
-      var mach = String(r[3] || "").trim();
       var user = String(r[1] || "").trim();
-      if (!LOCS[loc]) return;
+      var found = locateRow(r);
+      if (!found) return;
+      var loc = found.loc, hit = found.m;
 
       var recent = (Date.now() - ts.getTime()) <= 30 * DAY;
 
       var L = byLoc[loc];
       L.count++; if (recent) L.count30++;
       if (!L.last || ts > L.last) L.last = ts;
-
-      // match the log's machine string back to a machine in LOCS
-      var hit = null;
-      LOCS[loc].machines.forEach(function (m) {
-        if (hit) return;
-        if (mach === m.n || mach.indexOf(m.n) === 0 || mach.indexOf(m.n) > -1) hit = m;
-      });
-      if (!hit) return;
 
       var M = byMachine[loc + "|" + hit.n];
       M.count++; if (recent) M.count30++;
@@ -327,19 +341,14 @@
 
     ordered.forEach(function (x) {
       var r = x.r;
-      var loc = String(r[2] || "").trim().toUpperCase().slice(0, 2);
-      if (!LOCS[loc]) return;
+      var found = locateRow(r);
+      if (!found) return;
+      var loc = found.loc, mi = found.mi;
 
-      var machines = LOCS[loc].machines, mi = -1;
-      for (var i = 0; i < machines.length; i++) {
-        if (String(r[3] || "").trim().indexOf(machines[i].n) === 0) { mi = i; break; }
-      }
-      if (mi < 0) return;
-
-      var ti = taskIndex(machines[mi], r[5]);
+      var ti = taskIndex(found.m, r[5]);
       if (ti < 0) return;
 
-      var iv = T[machines[mi].t][ti][1];
+      var iv = T[found.m.t][ti][1];
       var nowKey = String(periodKey(iv));
       if (periodKeyAt(iv, x.t) !== nowKey) return;      // logged in an earlier period
 
@@ -453,11 +462,12 @@
     rows.forEach(function (r) {
       var ts = parseTs(r[0]);
       if (!ts || ts.getTime() < cutoff) return;
-      var loc = String(r[2] || "").trim().toUpperCase().slice(0, 2);
-      if (!LOCS[loc]) return;
+      var found = locateRow(r);
+      if (!found) return;
+      var loc = found.loc;
       items.push({
         ts: ts, loc: loc,
-        machine: String(r[3] || "").trim(),
+        machine: found.m.n,
         task: String(r[5] || "").trim(),
         user: String(r[1] || "").trim(),
         st: actionState(r[7])
