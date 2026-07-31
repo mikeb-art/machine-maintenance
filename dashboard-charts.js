@@ -650,6 +650,7 @@
       wrapped.__mmWrapped = true;
       window.renderDash = wrapped;
     }
+    mmInitPeriodView();
     // safety net: if the dashboard is already on screen, draw now
     if (isDashboard()) setTimeout(function () { refresh(false); }, 0);
   }
@@ -714,6 +715,119 @@
     wrapped.__mmWrapped = true;
     window.appendRows = wrapped;
     setTimeout(flushPending, 1200);           // catch rows left over from last visit
+  }
+
+  /* ========================================================================
+     PERIOD VIEW — click a KPI period card (Daily/Shift, Weekly, …) in a
+     location to see, across every printer in that location, just that
+     period's tasks with their done/not-done status and check buttons.
+     Augments the app's renderLoc; sidebar printer navigation is unchanged.
+     ==================================================================== */
+  var mmPeriod = null, mmPeriodLoc = null;
+
+  function mmLoc() {                       // active location code, or null
+    try { return (typeof view !== "undefined" && LOCS[view]) ? view : null; }
+    catch (e) { return null; }
+  }
+  function mmCatIvs(catName) {
+    for (var i = 0; i < CATS.length; i++) if (CATS[i][0] === catName) return CATS[i][1];
+    return null;
+  }
+  function mmSel()    { try { return (typeof selMachine !== "undefined") ? selMachine : null; } catch (e) { return null; } }
+  function mmFilter() { try { return (typeof filter !== "undefined" && filter) || "all"; }      catch (e) { return "all"; } }
+  function mmQuery()  { try { return (typeof query  !== "undefined" && query)  || ""; }          catch (e) { return ""; } }
+
+  function mmRenderPeriod() {
+    var loc = mmLoc(); if (!loc || !mmPeriod) return;
+    var ivs = mmCatIvs(mmPeriod); if (!ivs) return;
+    var L = LOCS[loc], f = mmFilter(), q = mmQuery().toLowerCase();
+    var blocks = "";
+    L.machines.forEach(function (m, mi) {
+      if (!m.t) return;
+      var tasks = T[m.t], rows = "", ga = 0, gd = 0;
+      tasks.forEach(function (t, ti) {
+        if (ivs.indexOf(t[1]) < 0) return;
+        var id = taskId(loc, mi, ti), st = stateOf(id, t[1]);
+        ga++; if (st === "done") gd++;
+        if (f !== "all" && st !== (f === "open" ? "open" : f)) return;
+        if (q && t[0].toLowerCase().indexOf(q) < 0) return;
+        rows += '<div class="task ' + st + '" id="t-' + id.replace(/[|]/g, "_") + '">'
+              + '<div class="t-name">' + t[0] + (t[2] ? '<span class="t-note">' + t[2] + '</span>' : "") + '</div>'
+              + chip(t[1])
+              + '<div class="t-btns">'
+              + '<button class="t-btn yes" title="Mark completed" onclick="mark(\'' + id + '\',\'done\')">✓</button>'
+              + '<button class="t-btn no" title="Mark not completed" onclick="mark(\'' + id + '\',\'notdone\')">✕</button>'
+              + '</div></div>';
+      });
+      if (ga === 0) return;                 // this printer has no tasks in this period
+      var pct = ga ? Math.round(gd / ga * 100) : 0;
+      blocks += '<div class="machine open"><div class="m-head" onclick="toggle(this)"><span class="caret">▶</span>'
+              + '<div><div class="m-title">' + m.n + '</div><div class="m-serial">' + m.s + '</div></div>'
+              + '<div class="m-prog">' + gd + '/' + ga + ' done <span class="m-bar"><i style="width:' + pct + '%"></i></span></div></div>'
+              + '<div class="m-body">' + (rows || '<div class="nodocs">No tasks in this filter.</div>') + '</div></div>';
+    });
+    if (!blocks) blocks = '<div class="empty"><div class="ei">🗂</div>No ' + mmPeriod + ' tasks for this location.</div>';
+    var panel = document.querySelector("#content .panel");
+    if (!panel) return;
+    var head = panel.querySelector(".panel-head");
+    if (!head) return;
+    while (head.nextSibling) panel.removeChild(head.nextSibling);
+    head.insertAdjacentHTML("afterend", blocks);
+    var h2 = head.querySelector("h2");
+    if (h2) h2.innerHTML = "🖨 " + L.name + " — " + mmPeriod;
+  }
+
+  function mmDecorateCards() {
+    var loc = mmLoc(); if (!loc) return;
+    var cards = document.querySelectorAll("#content .stats .stat");
+    for (var i = 0; i < cards.length; i++) {
+      (function (card) {
+        var lbl = card.querySelector(".lbl"); if (!lbl) return;
+        var name = lbl.textContent.trim();
+        card.style.cursor = "pointer";
+        card.title = "Show " + name + " tasks for every printer here";
+        card.onclick = function () {
+          if (mmPeriod === name && mmPeriodLoc === loc) { mmPeriod = null; }      // click again to close
+          else { mmPeriod = name; mmPeriodLoc = loc; try { selMachine = null; } catch (e) {} }
+          try { render(); } catch (e) {}
+        };
+        if (mmPeriod === name && mmPeriodLoc === loc) card.classList.add("mm-active");
+        else card.classList.remove("mm-active");
+      })(cards[i]);
+    }
+  }
+
+  function mmAfterRender() {
+    var loc = mmLoc();
+    if (!loc) { mmPeriod = null; return; }                 // dashboard / guide
+    if (mmSel() !== null) { mmPeriod = null; return; }      // a printer is selected -> normal view
+    if (mmPeriod && mmPeriodLoc !== loc) mmPeriod = null;   // switched location
+    mmDecorateCards();
+    if (mmPeriod) mmRenderPeriod();
+  }
+
+  function mmInjectStyle() {
+    if (document.getElementById("mm-period-style")) return;
+    var s = document.createElement("style");
+    s.id = "mm-period-style";
+    s.textContent = ".stats .stat.mm-active{outline:2px solid var(--blue,#1f6fd6);outline-offset:1px;" +
+      "box-shadow:0 2px 10px rgba(31,111,214,.18)}";
+    document.head.appendChild(s);
+  }
+
+  function mmInitPeriodView() {
+    mmInjectStyle();
+    if (typeof window.render === "function" && !window.render.__mmPeriodWrapped) {
+      var orig = window.render;
+      var wrapped = function () {
+        var r = orig.apply(this, arguments);
+        try { mmAfterRender(); } catch (e) {}
+        return r;
+      };
+      wrapped.__mmPeriodWrapped = true;
+      window.render = wrapped;
+    }
+    try { mmAfterRender(); } catch (e) {}     // decorate if already in a location view
   }
 
   window.MM_COVERAGE = { refresh: refresh, isDashboard: isDashboard, banner: banner };
