@@ -330,6 +330,26 @@
     return -1;
   }
 
+  /* "Every N (working) days" recurring intervals (d2 = every 2 days, wd3 =
+     every 3 working days) should read as done when completed within their
+     rolling window — the app's fixed calendar bucket resets them a day early
+     (e.g. an every-2-day task done 1.8 days ago flipped back to "not done"). */
+  var MM_ROLL = { d2: { n: 2, work: false }, wd3: { n: 3, work: true } };
+  function mmWorkingDaysBetween(from, to) {
+    var d = new Date(from); d.setHours(0, 0, 0, 0);
+    var end = new Date(to); end.setHours(0, 0, 0, 0);
+    var n = 0;
+    while (d < end) { d.setDate(d.getDate() + 1); var w = d.getDay(); if (w !== 0 && w !== 6) n++; }
+    return n;
+  }
+  function mmRollingOk(iv, when) {
+    var cfg = MM_ROLL[iv];
+    if (!cfg) return null;                              // not a rolling interval → use fixed bucket
+    var elapsed = cfg.work ? mmWorkingDaysBetween(when, new Date())
+                           : (Date.now() - when.getTime()) / 86400000;
+    return elapsed <= cfg.n;                            // true = still within window (counts as done)
+  }
+
   function hydrateStore(rows) {
     if (typeof store === "undefined" || !store || typeof periodKey !== "function") return false;
     var changed = false;
@@ -350,7 +370,9 @@
 
       var iv = T[found.m.t][ti][1];
       var nowKey = String(periodKey(iv));
-      if (periodKeyAt(iv, x.t) !== nowKey) return;      // logged in an earlier period
+      var mmWin = mmRollingOk(iv, x.t);
+      if (mmWin === null) { if (periodKeyAt(iv, x.t) !== nowKey) return; }  // fixed period bucket
+      else if (!mmWin) return;                                             // rolling window elapsed
 
       var st = actionState(r[7]);
       if (!st) return;
